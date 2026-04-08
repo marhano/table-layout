@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T02:59:17.351Z
+ * Built: 2026-04-08T03:29:08.575Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -622,6 +622,7 @@ var GridToolbar = (function () {
     );
 
     jQuery.each(cfg.shapes, function (key, shape) {
+      if (shape === false) return;
       $toolbar.append(_buildShapeBtn(key, shape));
     });
 

@@ -12,6 +12,7 @@ var GridToolbar = (function () {
     );
 
     jQuery.each(cfg.shapes, function (key, shape) {
+      if (shape === false) return;
       $toolbar.append(_buildShapeBtn(key, shape));
     });
 
