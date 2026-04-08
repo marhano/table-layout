@@ -10,50 +10,26 @@ var GridZoom = (function () {
     var zCfg = cfg.zoom || {};
     if (!zCfg.enabled || !zCfg.showControls) return jQuery();
 
-    var $ctrl = jQuery("<div>").addClass("tl-zoom-controls");
+    var min  = zCfg.min  || 0.4;
+    var max  = zCfg.max  || 2;
+    var step = zCfg.step || 0.1;
 
-    $ctrl.append(
-      _btn(zCfg.labelZoomOut || "－", "tl-zoom-btn-out", function () {
-        applyZoom(_zoom - (zCfg.step || 0.1));
-      }),
-      _btn(zCfg.labelReset || "↺", "tl-zoom-btn-reset", function () {
-        applyZoom(zCfg.initial || 1);
-      }),
-      jQuery("<div>").addClass("tl-zoom-divider"),
-      _btn(zCfg.labelZoomIn || "＋", "tl-zoom-btn-in", function () {
-        applyZoom(_zoom + (zCfg.step || 0.1));
-      }),
-    );
+    var $reset = jQuery("<button>")
+      .addClass("tl-zoom-btn tl-zoom-btn-reset")
+      .attr("title", "Reset zoom")
+      .html(zCfg.labelReset || "↺")
+      .on("click", function () { applyZoom(zCfg.initial || 1); });
 
-    if (zCfg.showLabel) {
-      $ctrl.append(
-        jQuery("<div>").addClass("tl-zoom-divider"),
-        jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_zoom)),
-      );
-    }
+    var $slider = jQuery("<input>")
+      .attr({ type: "range", min: min, max: max, step: step, value: _zoom })
+      .addClass("tl-zoom-slider")
+      .on("input", function () { applyZoom(parseFloat(this.value)); });
 
-    return $ctrl;
-  }
+    var $label = jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_zoom));
 
-  function _btn(label, cls, handler) {
-    var cfg = GridCore.getConfig();
-    return jQuery("<button>")
-      .addClass("tl-zoom-btn " + cls)
-      .html(label)
-      .css({ background: cfg.theme.zoomBtnBg, color: cfg.theme.zoomBtnColor })
-      .on("click", handler)
-      .on("mouseenter", function () {
-        jQuery(this).css({
-          background: cfg.theme.zoomBtnHoverBg,
-          color: "#fff",
-        });
-      })
-      .on("mouseleave", function () {
-        jQuery(this).css({
-          background: cfg.theme.zoomBtnBg,
-          color: cfg.theme.zoomBtnColor,
-        });
-      });
+    return jQuery("<div>")
+      .addClass("tl-zoom-controls")
+      .append($reset, $slider, $label);
   }
 
   function applyZoom(level, silent) {
@@ -73,8 +49,7 @@ var GridZoom = (function () {
     $za.css({ width: natW * level + "px", height: natH * level + "px" });
 
     jQuery(".tl-zoom-label").text(_fmt(level));
-    jQuery(".tl-zoom-btn-out").prop("disabled", level <= min);
-    jQuery(".tl-zoom-btn-in").prop("disabled", level >= max);
+    jQuery(".tl-zoom-slider").val(level);
 
     GridEvents.emit("zoom:changed", level);
 
