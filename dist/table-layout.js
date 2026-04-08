@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T03:37:46.226Z
+ * Built: 2026-04-08T03:43:05.369Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -1201,10 +1201,12 @@ var TableLayout = (function () {
       .addClass("tl-root");
     var $wrapper = jQuery("<div>").addClass("tl-wrapper");
     var $canvas = GridRender.buildCanvas();
+    var $canvasWrap = jQuery("<div>").addClass("tl-canvas-wrap");
+    $canvasWrap.append($canvas);
+    $canvasWrap.append(GridZoom.buildControls());
 
     $wrapper.append(GridToolbar.build());
-    $canvas.append(GridZoom.buildControls());
-    $wrapper.append($canvas);
+    $wrapper.append($canvasWrap);
     $wrapper.append(GridRender.buildLegend());
 
     if (cfg.showHint) {

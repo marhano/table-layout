@@ -43,10 +43,12 @@ var TableLayout = (function () {
       .addClass("tl-root");
     var $wrapper = jQuery("<div>").addClass("tl-wrapper");
     var $canvas = GridRender.buildCanvas();
+    var $canvasWrap = jQuery("<div>").addClass("tl-canvas-wrap");
+    $canvasWrap.append($canvas);
+    $canvasWrap.append(GridZoom.buildControls());
 
     $wrapper.append(GridToolbar.build());
-    $canvas.append(GridZoom.buildControls());
-    $wrapper.append($canvas);
+    $wrapper.append($canvasWrap);
     $wrapper.append(GridRender.buildLegend());
 
     if (cfg.showHint) {

@@ -116,11 +116,14 @@
 /* ─────────────────────────────────────────────────────────────
    ZOOM CONTROLS
    ───────────────────────────────────────────────────────────── */
+.tl-canvas-wrap {
+    position: relative;
+}
+
 .tl-zoom-controls {
-    position: sticky;
+    position: absolute;
     bottom: 14px;
     right: 14px;
-    float: right;
     display: flex;
     align-items: center;
     gap: 4px;
