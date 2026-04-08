@@ -89,9 +89,27 @@ var GridPlace = (function () {
     _pending = placement;
     var cfg = GridCore.getConfig();
     var shapeDef = (cfg.shapes || {})[placement.shape] || {};
-    var color = cfg.statusColors[cfg.newTable.defaultStatus] || "#16a34a";
     var nextName =
       (cfg.newTable.namePrefix || "Table") + " " + GridCore.getCounter();
+
+    // ── Custom modal hook ─────────────────────────
+    if (typeof cfg.onCreateTable === "function") {
+      var tableDefaults = {
+        name: nextName,
+        seats: cfg.newTable.defaultSeats || 4,
+        status: cfg.newTable.defaultStatus || "available",
+      };
+      cfg.onCreateTable(
+        jQuery.extend({}, placement),
+        tableDefaults,
+        function (details) {
+          _commit(details);
+        }
+      );
+      return;
+    }
+
+    var color = cfg.statusColors[cfg.newTable.defaultStatus] || "#16a34a";
     var styles = GridCore.getShapeStyles(placement.shape);
 
     var $overlay = jQuery("<div>").addClass("tl-overlay");

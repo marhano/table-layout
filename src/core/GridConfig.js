@@ -108,6 +108,7 @@ var GridConfig = (function () {
     onLayoutChange: null,
     onZoom: null,
     onTableCreated: null,
+    onCreateTable: null,
   };
 
   /**
