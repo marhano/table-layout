@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T08:41:29.169Z
+ * Built: 2026-04-08T09:00:52.187Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -712,6 +712,7 @@ var GridRender = (function () {
 /* src/modules/GridToolbar.js */
 var GridToolbar = (function () {
   var _activeTool = null;
+  var _$layoutName = null;
 
   function build() {
     var cfg = GridCore.getConfig();
@@ -719,15 +720,30 @@ var GridToolbar = (function () {
       .addClass("tl-toolbar")
       .css("background", cfg.theme.toolbarBg);
 
-    $toolbar.append(
+    if (cfg.layers && cfg.layers.length) {
+      var activeLayer = GridCore.getActiveLayer();
+      _$layoutName = jQuery("<h3>")
+        .addClass("tl-toolbar-layout-name")
+        .text(activeLayer ? activeLayer.label : "");
+      $toolbar.append(_$layoutName);
+
+      GridEvents.on("layer:switched", function (layer) {
+        if (_$layoutName) _$layoutName.text(layer ? layer.label : "");
+      });
+    }
+
+    var $tools = jQuery("<div>").addClass("tl-toolbar-tools");
+
+    $tools.append(
       jQuery("<span>").addClass("tl-toolbar-label").text("Tables"),
     );
 
     jQuery.each(cfg.shapes, function (key, shape) {
       if (shape === false) return;
-      $toolbar.append(_buildShapeBtn(key, shape));
+      $tools.append(_buildShapeBtn(key, shape));
     });
 
+    $toolbar.append($tools);
     $toolbar.append(jQuery("<div>").addClass("tl-toolbar-separator"));
 
     return $toolbar;
