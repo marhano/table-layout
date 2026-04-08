@@ -93,10 +93,12 @@
     font-weight: 600;
     transition: all 0.15s;
     padding: 4px;
+    background: transparent;
 }
 
 .tl-shape-tool-btn:hover {
     opacity: 0.8;
+    background: var(--tl-surface-bright);
 }
 
 .tl-shape-tool-btn.active {
@@ -494,6 +496,27 @@
     color: var(--tl-danger);
     margin-top: -8px;
     display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SHAPE PANEL (floating inside canvas)
+   ───────────────────────────────────────────────────────────── */
+.tl-shape-panel {
+    position: absolute;
+    top: 50%;
+    left: 18px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-50%);
 }
 
 /* ─────────────────────────────────────────────────────────────

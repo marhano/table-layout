@@ -20,21 +20,19 @@ var GridToolbar = (function () {
       });
     }
 
-    var $tools = jQuery("<div>").addClass("tl-toolbar-tools");
+    return $toolbar;
+  }
 
-    $tools.append(
-      jQuery("<span>").addClass("tl-toolbar-label").text("Tables"),
-    );
+  function buildShapePanel() {
+    var cfg = GridCore.getConfig();
+    var $panel = jQuery("<div>").addClass("tl-shape-panel");
 
     jQuery.each(cfg.shapes, function (key, shape) {
       if (shape === false) return;
-      $tools.append(_buildShapeBtn(key, shape));
+      $panel.append(_buildShapeBtn(key, shape));
     });
 
-    $toolbar.append($tools);
-    $toolbar.append(jQuery("<div>").addClass("tl-toolbar-separator"));
-
-    return $toolbar;
+    return $panel;
   }
 
   function _buildShapeBtn(key, shape) {
@@ -72,6 +70,7 @@ var GridToolbar = (function () {
 
   return {
     build: build,
+    buildShapePanel: buildShapePanel,
     toggle: toggle,
     deactivate: deactivate,
     getActive: getActive,

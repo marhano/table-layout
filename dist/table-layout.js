@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T09:00:52.187Z
+ * Built: 2026-04-08T09:11:32.207Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -732,21 +732,21 @@ var GridToolbar = (function () {
       });
     }
 
-    var $tools = jQuery("<div>").addClass("tl-toolbar-tools");
-
-    $tools.append(
-      jQuery("<span>").addClass("tl-toolbar-label").text("Tables"),
-    );
-
-    jQuery.each(cfg.shapes, function (key, shape) {
-      if (shape === false) return;
-      $tools.append(_buildShapeBtn(key, shape));
-    });
-
-    $toolbar.append($tools);
     $toolbar.append(jQuery("<div>").addClass("tl-toolbar-separator"));
 
     return $toolbar;
+  }
+
+  function buildShapePanel() {
+    var cfg = GridCore.getConfig();
+    var $panel = jQuery("<div>").addClass("tl-shape-panel");
+
+    jQuery.each(cfg.shapes, function (key, shape) {
+      if (shape === false) return;
+      $panel.append(_buildShapeBtn(key, shape));
+    });
+
+    return $panel;
   }
 
   function _buildShapeBtn(key, shape) {
@@ -784,6 +784,7 @@ var GridToolbar = (function () {
 
   return {
     build: build,
+    buildShapePanel: buildShapePanel,
     toggle: toggle,
     deactivate: deactivate,
     getActive: getActive,
@@ -1557,6 +1558,7 @@ var TableLayout = (function () {
     var $canvasWrap = jQuery("<div>").addClass("tl-canvas-wrap");
     $canvasWrap.append($canvas);
     $canvasWrap.append(GridZoom.buildControls());
+    $canvasWrap.append(GridToolbar.buildShapePanel());
     if (cfg.trashZone) $canvasWrap.append(GridRender.buildTrashZone());
     if (cfg.layers && cfg.layers.length) $canvasWrap.append(GridLayers.build());
 

@@ -94,7 +94,7 @@ var GridConfig = (function () {
       },
       diamond: {
         label: "Diamond",
-        icon: "fa-solid fa-diamond",
+        icon: "fa-regular fa-gem",
         minCols: 2,
         minRows: 2,
         preferSquare: true,
