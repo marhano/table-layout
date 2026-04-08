@@ -168,7 +168,7 @@ var GridLayers = (function () {
     $actions.append($cancel, $create);
     $modal.append($nameField, $iconField, $actions);
     $overlay.append($modal);
-    jQuery("body").append($overlay);
+    jQuery(".tl-root").first().append($overlay);
 
     $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
 

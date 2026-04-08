@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T06:44:19.625Z
+ * Built: 2026-04-08T07:58:10.382Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -26,13 +26,29 @@ var GridConfig = (function () {
     showHint: false,
 
     theme: {
-      canvasHeight: "600px",
-      gridBg: "#ffffff",
-      cellBg: "#fbfbfb",
-      toolbarBg: "#1e293b",
-      zoomBtnBg: "#e5e7eb",
-      zoomBtnColor: "#111827",
-      zoomBtnHoverBg: "#6366f1",
+      // Primary accent — buttons, active states, focus rings, layer switcher
+      primary:        "#6366f1",
+      primaryDark:    "#4f46e5",
+      primaryLight:   "#818cf8",
+      // Surface — toolbar, layer panel background (light by default)
+      surface:        "#f8fafc",
+      surfaceAlt:     "#334155",   // secondary: separators, icon backgrounds
+      surfaceHover:   "#475569",   // hover on surface elements
+      surfaceMuted:   "#64748b",   // labels, secondary text
+      surfaceSubtle:  "#94a3b8",   // icon color on dark elements
+      surfaceBright:  "#f1f5f9",   // cancel button bg, highlights
+      // Semantic
+      danger:         "#dc2626",   // errors, trash zone
+      border:         "#e5e7eb",   // canvas border, input borders
+      // Zoom controls
+      zoomBg:         "rgba(255,255,255,0.92)",
+      zoomBtnBg:      "#f1f5f9",
+      zoomBtnColor:   "#334155",
+      zoomBtnHover:   "#e2e8f0",
+      // Canvas
+      canvasHeight:   "600px",
+      gridBg:         "#ffffff",
+      cellBg:         "#fbfbfb",
     },
 
     zoom: {
@@ -1234,7 +1250,7 @@ var GridPlace = (function () {
       jQuery("<div>").addClass("tl-modal-actions").append($cancel, $create),
     );
     $overlay.append($modal);
-    jQuery("body").append($overlay);
+    jQuery(".tl-root").first().append($overlay);
 
     setTimeout(function () {
       $name.trigger("focus").trigger("select");
@@ -1459,7 +1475,7 @@ var GridLayers = (function () {
     $actions.append($cancel, $create);
     $modal.append($nameField, $iconField, $actions);
     $overlay.append($modal);
-    jQuery("body").append($overlay);
+    jQuery(".tl-root").first().append($overlay);
 
     $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
 
@@ -1537,6 +1553,14 @@ var TableLayout = (function () {
     var $container = jQuery("#" + cfg.containerId)
       .empty()
       .addClass("tl-root");
+
+    // Apply theme CSS variables
+    var camelToKebab = function (s) {
+      return s.replace(/([A-Z])/g, function (m) { return "-" + m.toLowerCase(); });
+    };
+    jQuery.each(cfg.theme, function (key, val) {
+      $container[0].style.setProperty("--tl-" + camelToKebab(key), val);
+    });
     var $wrapper = jQuery("<div>").addClass("tl-wrapper");
     var $canvas = GridRender.buildCanvas();
     var $canvasWrap = jQuery("<div>").addClass("tl-canvas-wrap");

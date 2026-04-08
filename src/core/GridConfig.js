@@ -17,13 +17,29 @@ var GridConfig = (function () {
     showHint: false,
 
     theme: {
-      canvasHeight: "600px",
-      gridBg: "#ffffff",
-      cellBg: "#fbfbfb",
-      toolbarBg: "#1e293b",
-      zoomBtnBg: "#e5e7eb",
-      zoomBtnColor: "#111827",
-      zoomBtnHoverBg: "#6366f1",
+      // Primary accent — buttons, active states, focus rings, layer switcher
+      primary:        "#6366f1",
+      primaryDark:    "#4f46e5",
+      primaryLight:   "#818cf8",
+      // Surface — toolbar, layer panel background (light by default)
+      surface:        "#f8fafc",
+      surfaceAlt:     "#334155",   // secondary: separators, icon backgrounds
+      surfaceHover:   "#475569",   // hover on surface elements
+      surfaceMuted:   "#64748b",   // labels, secondary text
+      surfaceSubtle:  "#94a3b8",   // icon color on dark elements
+      surfaceBright:  "#f1f5f9",   // cancel button bg, highlights
+      // Semantic
+      danger:         "#dc2626",   // errors, trash zone
+      border:         "#e5e7eb",   // canvas border, input borders
+      // Zoom controls
+      zoomBg:         "rgba(255,255,255,0.92)",
+      zoomBtnBg:      "#f1f5f9",
+      zoomBtnColor:   "#334155",
+      zoomBtnHover:   "#e2e8f0",
+      // Canvas
+      canvasHeight:   "600px",
+      gridBg:         "#ffffff",
+      cellBg:         "#fbfbfb",
     },
 
     zoom: {

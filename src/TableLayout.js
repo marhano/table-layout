@@ -41,6 +41,14 @@ var TableLayout = (function () {
     var $container = jQuery("#" + cfg.containerId)
       .empty()
       .addClass("tl-root");
+
+    // Apply theme CSS variables
+    var camelToKebab = function (s) {
+      return s.replace(/([A-Z])/g, function (m) { return "-" + m.toLowerCase(); });
+    };
+    jQuery.each(cfg.theme, function (key, val) {
+      $container[0].style.setProperty("--tl-" + camelToKebab(key), val);
+    });
     var $wrapper = jQuery("<div>").addClass("tl-wrapper");
     var $canvas = GridRender.buildCanvas();
     var $canvasWrap = jQuery("<div>").addClass("tl-canvas-wrap");

@@ -197,7 +197,7 @@ var GridPlace = (function () {
       jQuery("<div>").addClass("tl-modal-actions").append($cancel, $create),
     );
     $overlay.append($modal);
-    jQuery("body").append($overlay);
+    jQuery(".tl-root").first().append($overlay);
 
     setTimeout(function () {
       $name.trigger("focus").trigger("select");
