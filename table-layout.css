@@ -1,0 +1,365 @@
+﻿.grid-wrapper { 
+    width: 100%;
+    margin: 0 auto; 
+}
+
+.table-grid{
+    padding-top: 1rem;
+}
+
+/* ── Toolbar ── */
+.grid-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #1e293b;
+    border-radius: 10px 10px 0 0;
+    flex-wrap: wrap;
+    min-height: 52px;
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 28px;
+    background: #334155;
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.toolbar-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 2px;
+}
+
+/* ── Shape Tool Buttons ── */
+.shape-tool-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 54px;
+    height: 42px;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.62rem;
+    font-weight: 600;
+    transition: all 0.15s;
+    padding: 4px 2px;
+}
+
+.shape-tool-btn:hover {
+    background: #475569;
+    color: #f1f5f9;
+    border-color: #6366f1;
+}
+
+.shape-tool-btn.active {
+    background: #6366f1;
+    color: #fff;
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.25);
+}
+
+.shape-tool-btn .shape-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+/* ── Canvas ── */
+.grid-canvas {
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    background-image:
+        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: var(--cell-size) var(--cell-size);
+    position: relative;
+    cursor: default;
+}
+
+.grid-canvas.placing-mode {
+    cursor: crosshair;
+}
+
+/* ── Zoom Controls ── */
+.zoom-controls {
+    position: sticky;
+    bottom: 14px;
+    right: 14px;
+    float: right;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+    z-index: 10;
+}
+
+.zoom-controls .zoom-btn {
+    border: none;
+    border-radius: 6px;
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.zoom-controls .zoom-btn:hover:not(:disabled) { transform: scale(1.1); }
+.zoom-controls .zoom-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.zoom-controls .zoom-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #6b7280;
+    min-width: 38px;
+    text-align: center;
+}
+
+.zoom-controls .zoom-divider {
+    width: 1px;
+    height: 18px;
+    background: #e5e7eb;
+    margin: 0 2px;
+}
+
+/* ── Zoom Area ── */
+.grid-zoom-area {
+    transform-origin: top left;
+    transition: transform 0.18s ease;
+    display: inline-block;
+    padding: 20px;
+}
+
+/* ── Grid ── */
+.layout-grid {
+    display: grid;
+    position: relative;
+}
+
+/* ── Background Cells ── */
+.grid-cell {
+    border-radius: 4px;
+    border: 1px dashed transparent;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    z-index: 0;
+}
+
+.grid-cell.cell-highlight-valid {
+    border-color: #6366f1 !important;
+    background: rgba(99,102,241,0.1) !important;
+}
+
+.grid-cell.cell-highlight-invalid {
+    border-color: #dc2626 !important;
+    background: rgba(220,38,38,0.08) !important;
+}
+
+/* ── Table Card ── */
+.table-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 8px;
+    gap: 3px;
+    cursor: grab;
+    user-select: none;
+    z-index: 2;
+    position: relative;
+    transition: box-shadow 0.2s, transform 0.15s, opacity 0.2s;
+    overflow: visible;
+}
+
+.table-card:active { cursor: grabbing; }
+.table-card:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* ── Shape variants ── */
+.table-card[data-shape="circle"]   { border-radius: 50%; }
+.table-card[data-shape="rounded"]  { border-radius: 22px; }
+.table-card[data-shape="square"]   { border-radius: 6px; }
+.table-card[data-shape="hexagon"]  { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+.table-card[data-shape="diamond"]  { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius: 0; }
+.table-card[data-shape="triangle"] { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); border-radius: 0; }
+
+.table-name   { font-weight: 700; font-size: 0.88rem; color: #fff; text-align: center; line-height: 1.2; }
+.table-seats  { font-size: 0.72rem; color: rgba(255,255,255,0.75); }
+.table-status {
+    font-size: 0.65rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 20px;
+    color: #fff; text-transform: uppercase; letter-spacing: 0.4px;
+}
+
+.table-size-badge {
+    position: absolute;
+    top: 4px; right: 6px;
+    font-size: 0.58rem;
+    color: rgba(255,255,255,0.5);
+    pointer-events: none;
+}
+
+/* ── Drag states ── */
+.table-card.dragging { opacity: 0.1; transform: scale(0.95); cursor: grabbing; }
+
+/* ── Drop ghost ── */
+.drop-ghost {
+    border-radius: 10px;
+    border: 2px dashed #6366f1;
+    background: rgba(99,102,241,0.1);
+    pointer-events: none;
+    z-index: 3;
+}
+.drop-ghost.invalid {
+    border-color: #dc2626;
+    background: rgba(220,38,38,0.08);
+}
+
+/* ── Place ghost (while drawing new table) ── */
+.place-ghost {
+    border: 2px dashed #f59e0b;
+    background: rgba(245,158,11,0.12);
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f59e0b;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+/* ── Swap animation ── */
+.table-card.swap-animate { animation: swapPop 0.28s ease; }
+@keyframes swapPop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+/* ── Modal ── */
+.tg-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.tg-modal {
+    background: #fff;
+    border-radius: 14px;
+    padding: 28px 32px;
+    width: 340px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tg-modal h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tg-modal-shape-preview {
+    width: 52px; height: 52px;
+    border-radius: 8px;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.tg-field { display: flex; flex-direction: column; gap: 5px; }
+
+.tg-field label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.tg-field input,
+.tg-field select {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+}
+
+.tg-field input:focus,
+.tg-field select:focus { border-color: #6366f1; }
+
+.tg-field-row { display: flex; gap: 12px; }
+.tg-field-row .tg-field { flex: 1; }
+
+.tg-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.tg-btn {
+    border: none;
+    border-radius: 7px;
+    padding: 9px 20px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+}
+
+.tg-btn:hover { filter: brightness(1.1); transform: scale(1.03); }
+.tg-btn-primary { background: #6366f1; color: #fff; }
+.tg-btn-cancel  { background: #f1f5f9; color: #64748b; }
+
+.tg-error {
+    font-size: 0.78rem;
+    color: #dc2626;
+    margin-top: -8px;
+    display: none;
+}
+
+/* ── Legend ── */
+.legend {
+    display: flex; gap: 16px;
+    justify-content: center;
+    margin-top: 14px; flex-wrap: wrap;
+}
+.legend-item {
+    display: flex; align-items: center; gap: 7px;
+    color: #6b7280; font-size: 0.8rem;
+}
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── Hint ── */
+.grid-hint {
+    text-align: center; color: #9ca3af;
+    font-size: 0.75rem; margin-top: 10px;
+}

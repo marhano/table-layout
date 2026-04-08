@@ -1,0 +1,198 @@
+/**
+ * GridCore.js
+ * Pure state and logic — zero DOM, zero jQuery.
+ * All other modules read/write state through this API.
+ */
+var GridCore = (function () {
+  var _cfg = null;
+  var _tables = [];
+  var _counter = 1;
+
+  // ── Setup ─────────────────────────────────────────
+
+  function init(cfg) {
+    _cfg = cfg;
+    _tables = jQuery.extend(true, [], cfg.tables || []);
+    _counter = _tables.length + 1;
+  }
+
+  function reset() {
+    _cfg = null;
+    _tables = [];
+    _counter = 1;
+  }
+
+  // ── Config ────────────────────────────────────────
+
+  function getConfig() {
+    return _cfg;
+  }
+
+  // ── Tables ────────────────────────────────────────
+
+  function getTables() {
+    return _tables;
+  }
+  function getCounter() {
+    return _counter;
+  }
+  function bumpCounter() {
+    _counter++;
+  }
+
+  function tableById(id) {
+    return (
+      _tables.find(function (t) {
+        return t.id === id;
+      }) || null
+    );
+  }
+
+  function addTable(table) {
+    _tables.push(table);
+    bumpCounter();
+    GridEvents.emit("table:added", table);
+  }
+
+  function removeTable(id) {
+    var idx = _tables.findIndex(function (t) {
+      return t.id === id;
+    });
+    if (idx === -1) return false;
+    var removed = _tables.splice(idx, 1)[0];
+    GridEvents.emit("table:removed", removed);
+    return true;
+  }
+
+  function updateTable(id, props) {
+    var t = tableById(id);
+    if (!t) return false;
+    jQuery.extend(t, props);
+    GridEvents.emit("table:updated", t);
+    return true;
+  }
+
+  function moveTable(id, col, row) {
+    return updateTable(id, { col: col, row: row });
+  }
+
+  // ── Layout snapshot ───────────────────────────────
+
+  function getLayout() {
+    return _tables.map(function (t) {
+      return jQuery.extend({}, t);
+    });
+  }
+
+  // ── Collision ─────────────────────────────────────
+
+  function hasCollision(col, row, colSpan, rowSpan, excludeId) {
+    if (col < 1 || row < 1) return true;
+    if (col + colSpan - 1 > _cfg.columns) return true;
+    if (row + rowSpan - 1 > _cfg.rows) return true;
+
+    return _tables.some(function (t) {
+      if (t.id === excludeId) return false;
+      return !(
+        col + colSpan <= t.col ||
+        col >= t.col + t.colSpan ||
+        row + rowSpan <= t.row ||
+        row >= t.row + t.rowSpan
+      );
+    });
+  }
+
+  // ── Span calculation ──────────────────────────────
+
+  function calcSpan(start, end, shapeKey) {
+    var shapeDef = (_cfg.shapes || {})[shapeKey] || {};
+    var minC = shapeDef.minCols || 1;
+    var minR = shapeDef.minRows || 1;
+    var square = shapeDef.preferSquare || false;
+
+    var colSpan = Math.max(minC, Math.abs(end.col - start.col) + 1);
+    var rowSpan = Math.max(minR, Math.abs(end.row - start.row) + 1);
+    var col = Math.min(start.col, end.col);
+    var row = Math.min(start.row, end.row);
+
+    if (square) {
+      var side = Math.max(colSpan, rowSpan);
+      colSpan = side;
+      rowSpan = side;
+    }
+
+    return { col: col, row: row, colSpan: colSpan, rowSpan: rowSpan };
+  }
+
+  // ── Shape helpers ─────────────────────────────────
+
+  function getShapeStyles(shapeKey) {
+    var shapeDef = (_cfg.shapes || {})[shapeKey] || {};
+    return {
+      clipPath: shapeDef.clipPath || "none",
+      borderRadius: shapeDef.borderRadius || "8px",
+    };
+  }
+
+  // ── Coordinate helpers ────────────────────────────
+
+  function pxToGrid(offsetX, offsetY) {
+    var unit = _cfg.cellSize + _cfg.gap;
+    return {
+      col: Math.max(1, Math.min(_cfg.columns, Math.floor(offsetX / unit) + 1)),
+      row: Math.max(1, Math.min(_cfg.rows, Math.floor(offsetY / unit) + 1)),
+    };
+  }
+
+  function cursorToGrid(clientX, clientY) {
+    var gridEl = jQuery(".tl-layout-grid")[0];
+    if (!gridEl) return { col: 1, row: 1 };
+    var rect = gridEl.getBoundingClientRect();
+    var scaleX = rect.width / (gridEl.offsetWidth || 1);
+    var scaleY = rect.height / (gridEl.offsetHeight || 1);
+    return pxToGrid(
+      (clientX - rect.left) / scaleX,
+      (clientY - rect.top) / scaleY,
+    );
+  }
+
+  // ── Utilities ─────────────────────────────────────
+
+  function hexAlpha(hex, alpha) {
+    if (!hex || hex.length < 7) return "rgba(0,0,0," + alpha + ")";
+    return (
+      "rgba(" +
+      parseInt(hex.slice(1, 3), 16) +
+      "," +
+      parseInt(hex.slice(3, 5), 16) +
+      "," +
+      parseInt(hex.slice(5, 7), 16) +
+      "," +
+      alpha +
+      ")"
+    );
+  }
+
+  // ── Public API ────────────────────────────────────
+
+  return {
+    init: init,
+    reset: reset,
+    getConfig: getConfig,
+    getTables: getTables,
+    getLayout: getLayout,
+    getCounter: getCounter,
+    bumpCounter: bumpCounter,
+    tableById: tableById,
+    addTable: addTable,
+    removeTable: removeTable,
+    updateTable: updateTable,
+    moveTable: moveTable,
+    hasCollision: hasCollision,
+    calcSpan: calcSpan,
+    getShapeStyles: getShapeStyles,
+    pxToGrid: pxToGrid,
+    cursorToGrid: cursorToGrid,
+    hexAlpha: hexAlpha,
+  };
+})();

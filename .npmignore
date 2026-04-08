@@ -1,0 +1,6 @@
+# Publish only what users need
+node_modules/
+*.log
+watch.js
+
+# Keep: dist/, src/, README.md, CHANGELOG.md, package.json
