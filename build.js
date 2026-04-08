@@ -10,6 +10,7 @@ var files = [
   "src/modules/GridZoom.js",
   "src/modules/GridDrag.js",
   "src/modules/GridPlace.js",
+  "src/modules/GridLayers.js",
   "src/TableLayout.js",
 ];
 

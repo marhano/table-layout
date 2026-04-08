@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T05:38:13.441Z
+ * Built: 2026-04-08T06:07:40.581Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -111,7 +111,9 @@ var GridConfig = (function () {
       namePrefix: "Table",
     },
 
-    tables: [],
+    // Layer switcher — set to an array of {id, label, icon, tables} to enable
+    // icon can be an FA class string (e.g. "fa-solid fa-utensils") or short text/emoji ("A", "1F")
+    layers: null,
 
     // Callbacks — user overrides these
     onSwap: null,
@@ -119,6 +121,8 @@ var GridConfig = (function () {
     onZoom: null,
     onTableCreated: null,
     onCreateTable: null,
+    onLayerChange: null,  // fn(layer, tables) — fired when active layer changes
+    onLayerAdd: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
   };
 
   /**
@@ -239,12 +243,23 @@ var GridCore = (function () {
   var _cfg = null;
   var _tables = [];
   var _counter = 1;
+  var _layers = null;
+  var _activeLayerId = null;
 
   // ── Setup ─────────────────────────────────────────
 
   function init(cfg) {
     _cfg = cfg;
-    _tables = jQuery.extend(true, [], cfg.tables || []);
+    if (cfg.layers && cfg.layers.length) {
+      _layers = jQuery.extend(true, [], cfg.layers);
+      _layers.forEach(function (l) { if (!Array.isArray(l.tables)) l.tables = []; });
+      _activeLayerId = _layers[0].id;
+      _tables = jQuery.extend(true, [], _layers[0].tables);
+    } else {
+      _layers = null;
+      _activeLayerId = null;
+      _tables = [];
+    }
     _counter = _tables.length + 1;
   }
 
@@ -252,6 +267,8 @@ var GridCore = (function () {
     _cfg = null;
     _tables = [];
     _counter = 1;
+    _layers = null;
+    _activeLayerId = null;
   }
 
   // ── Config ────────────────────────────────────────
@@ -306,6 +323,51 @@ var GridCore = (function () {
 
   function moveTable(id, col, row) {
     return updateTable(id, { col: col, row: row });
+  }
+
+  // ── Layer management ──────────────────────────────
+
+  function getLayers() {
+    return _layers || [];
+  }
+
+  function getActiveLayerId() {
+    return _activeLayerId;
+  }
+
+  function getActiveLayer() {
+    if (!_layers) return null;
+    return _layers.find(function (l) { return l.id === _activeLayerId; }) || null;
+  }
+
+  function switchLayer(id) {
+    if (!_layers) return false;
+    // Save current tables into the active layer
+    var current = getActiveLayer();
+    if (current) current.tables = jQuery.extend(true, [], _tables);
+    // Load the target layer
+    var target = _layers.find(function (l) { return l.id === id; });
+    if (!target) return false;
+    _activeLayerId = id;
+    _tables = jQuery.extend(true, [], target.tables);
+    _counter = _tables.length + 1;
+    GridEvents.emit("layer:switched", target);
+    return true;
+  }
+
+  function addLayer(layer) {
+    if (!_layers) _layers = [];
+    if (!Array.isArray(layer.tables)) layer.tables = [];
+    _layers.push(layer);
+    GridEvents.emit("layer:added", layer);
+  }
+
+  function getAllLayersLayout() {
+    if (!_layers) return null;
+    // Save current tables first so the snapshot is up-to-date
+    var current = getActiveLayer();
+    if (current) current.tables = jQuery.extend(true, [], _tables);
+    return _layers.map(function (l) { return jQuery.extend(true, {}, l); });
   }
 
   // ── Layout snapshot ───────────────────────────────
@@ -426,6 +488,12 @@ var GridCore = (function () {
     pxToGrid: pxToGrid,
     cursorToGrid: cursorToGrid,
     hexAlpha: hexAlpha,
+    getLayers: getLayers,
+    getActiveLayerId: getActiveLayerId,
+    getActiveLayer: getActiveLayer,
+    switchLayer: switchLayer,
+    addLayer: addLayer,
+    getAllLayersLayout: getAllLayersLayout,
   };
 })();
 
@@ -1220,6 +1288,201 @@ var GridPlace = (function () {
 })();
 
 
+/* src/modules/GridLayers.js */
+/**
+ * GridLayers.js
+ * Layer switcher UI — lets users create and switch between multiple table layouts.
+ * Only active when cfg.layers is defined.
+ */
+var GridLayers = (function () {
+  var _$panel = null;
+
+  // ── Public: toggle button ─────────────────────────
+
+  function buildToggleBtn() {
+    return jQuery("<button>")
+      .addClass("tl-layers-btn")
+      .attr("title", "Switch Layout")
+      .html('<i class="fa-solid fa-layer-group"></i>')
+      .on("click", function (e) {
+        e.stopPropagation();
+        _$panel ? _closePanel() : _openPanel();
+      });
+  }
+
+  // ── Panel ─────────────────────────────────────────
+
+  function _openPanel() {
+    _closePanel();
+
+    var cfg = GridCore.getConfig();
+    var layers = GridCore.getLayers();
+    var activeId = GridCore.getActiveLayerId();
+
+    _$panel = jQuery("<div>").addClass("tl-layers-panel");
+
+    // Layer list (scrollable, max 3 visible)
+    var $list = jQuery("<div>").addClass("tl-layers-list");
+    jQuery.each(layers, function (_, layer) {
+      $list.append(_buildLayerItem(layer, layer.id === activeId));
+    });
+    _$panel.append($list);
+
+    // Separator
+    _$panel.append(jQuery("<div>").addClass("tl-layers-separator"));
+
+    // Add layout button
+    var $addBtn = jQuery("<button>")
+      .addClass("tl-layers-add-btn")
+      .html('<i class="fa-solid fa-plus"></i> Add Layout')
+      .on("click", function (e) {
+        e.stopPropagation();
+        _showAddForm();
+      });
+    _$panel.append($addBtn);
+
+    jQuery(".tl-canvas-wrap").append(_$panel);
+
+    // Close when clicking outside
+    setTimeout(function () {
+      jQuery(document).one("click.tl-layers-outside", function () {
+        _closePanel();
+      });
+    }, 0);
+  }
+
+  function _closePanel() {
+    if (_$panel) {
+      _$panel.remove();
+      _$panel = null;
+    }
+    jQuery(document).off("click.tl-layers-outside");
+  }
+
+  // ── Layer item ────────────────────────────────────
+
+  function _buildLayerItem(layer, isActive) {
+    var $item = jQuery("<div>")
+      .addClass("tl-layers-item" + (isActive ? " tl-layers-item--active" : ""))
+      .on("click", function (e) {
+        e.stopPropagation();
+        if (isActive) return;
+        GridCore.switchLayer(layer.id);
+        _rebuildGrid();
+        _closePanel();
+        var cfg = GridCore.getConfig();
+        if (typeof cfg.onLayerChange === "function")
+          cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+      });
+
+    // Icon: FA class string or plain text/emoji
+    var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;
+    var $icon = jQuery("<div>").addClass("tl-layers-icon");
+    if (isFaIcon) {
+      $icon.append(jQuery("<i>").addClass(layer.icon));
+    } else {
+      $icon.text(layer.icon || "?");
+    }
+
+    $item.append($icon);
+    $item.append(
+      jQuery("<span>").addClass("tl-layers-label").text(layer.label)
+    );
+
+    if (isActive) {
+      $item.append(
+        jQuery("<i>").addClass("fa-solid fa-check tl-layers-active-mark")
+      );
+    }
+
+    return $item;
+  }
+
+  // ── Add layer form ────────────────────────────────
+
+  function _showAddForm() {
+    if (!_$panel) return;
+    _$panel.find(".tl-layers-add-form").remove();
+
+    var cfg = GridCore.getConfig();
+
+    // Custom hook
+    if (typeof cfg.onLayerAdd === "function") {
+      cfg.onLayerAdd(function (details) {
+        _createLayer(details);
+      });
+      return;
+    }
+
+    // Default inline form
+    var $form = jQuery("<div>")
+      .addClass("tl-layers-add-form")
+      .on("click", function (e) { e.stopPropagation(); });
+
+    var $label = jQuery("<input>")
+      .attr({ type: "text", placeholder: "Layout name", maxlength: 30 });
+
+    var $icon = jQuery("<input>")
+      .attr({ type: "text", placeholder: 'Icon (fa-solid fa-… or A, 1…)', maxlength: 40 });
+
+    var $actions = jQuery("<div>").addClass("tl-layers-add-actions");
+
+    var $cancel = jQuery("<button>")
+      .addClass("tl-btn tl-btn-cancel")
+      .text("Cancel")
+      .on("click", function (e) {
+        e.stopPropagation();
+        $form.remove();
+      });
+
+    var $create = jQuery("<button>")
+      .addClass("tl-btn tl-btn-primary")
+      .text("Add")
+      .on("click", function (e) {
+        e.stopPropagation();
+        var label = jQuery.trim($label.val());
+        if (!label) { $label.addClass("tl-input-error").trigger("focus"); return; }
+        $label.removeClass("tl-input-error");
+        var icon = jQuery.trim($icon.val()) || label.charAt(0).toUpperCase();
+        _createLayer({ label: label, icon: icon });
+      });
+
+    $label.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
+
+    $actions.append($cancel, $create);
+    $form.append($label, $icon, $actions);
+    _$panel.append($form);
+
+    setTimeout(function () { $label.trigger("focus"); }, 50);
+  }
+
+  function _createLayer(details) {
+    var label = details.label || "Layout";
+    var layer = {
+      id: "layer-" + Date.now(),
+      label: label,
+      icon: details.icon || label.charAt(0).toUpperCase(),
+      tables: [],
+    };
+    GridCore.addLayer(layer);
+    GridCore.switchLayer(layer.id);
+    _rebuildGrid();
+    _closePanel();
+    var cfg = GridCore.getConfig();
+    if (typeof cfg.onLayerChange === "function")
+      cfg.onLayerChange(layer, []);
+  }
+
+  // ── Grid rebuild on layer switch ──────────────────
+
+  function _rebuildGrid() {
+    jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+  }
+
+  return { buildToggleBtn: buildToggleBtn };
+})();
+
+
 /* src/TableLayout.js */
 /**
  * TableLayout.js
@@ -1270,6 +1533,7 @@ var TableLayout = (function () {
     $canvasWrap.append($canvas);
     $canvasWrap.append(GridZoom.buildControls());
     if (cfg.trashZone) $canvasWrap.append(GridRender.buildTrashZone());
+    if (cfg.layers && cfg.layers.length) $canvasWrap.append(GridLayers.buildToggleBtn());
 
     $wrapper.append(GridToolbar.build());
     $wrapper.append($canvasWrap);
@@ -1298,6 +1562,10 @@ var TableLayout = (function () {
     // ── Wire internal events to user callbacks ─────
     GridEvents.on("zoom:changed", function (level) {
       if (typeof cfg.onZoom === "function") cfg.onZoom(level);
+    });
+    GridEvents.on("layer:switched", function (layer) {
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(layer, GridCore.getLayout());
     });
 
     // ── Return instance API ────────────────────────
@@ -1328,6 +1596,33 @@ var TableLayout = (function () {
       },
       getConfig: function () {
         return GridCore.getConfig();
+      },
+
+      // Layers
+      getLayers: function () {
+        return GridCore.getLayers();
+      },
+      getActiveLayer: function () {
+        return GridCore.getActiveLayer();
+      },
+      switchLayer: function (id) {
+        if (GridCore.switchLayer(id)) {
+          jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+        }
+      },
+      addLayer: function (details) {
+        var label = (details && details.label) || "Layout";
+        var layer = {
+          id: "layer-" + Date.now(),
+          label: label,
+          icon: (details && details.icon) || label.charAt(0).toUpperCase(),
+          tables: (details && details.tables) || [],
+        };
+        GridCore.addLayer(layer);
+        return layer;
+      },
+      getAllLayersLayout: function () {
+        return GridCore.getAllLayersLayout();
       },
 
       // Tools

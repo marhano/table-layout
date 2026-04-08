@@ -7,12 +7,23 @@ var GridCore = (function () {
   var _cfg = null;
   var _tables = [];
   var _counter = 1;
+  var _layers = null;
+  var _activeLayerId = null;
 
   // ── Setup ─────────────────────────────────────────
 
   function init(cfg) {
     _cfg = cfg;
-    _tables = jQuery.extend(true, [], cfg.tables || []);
+    if (cfg.layers && cfg.layers.length) {
+      _layers = jQuery.extend(true, [], cfg.layers);
+      _layers.forEach(function (l) { if (!Array.isArray(l.tables)) l.tables = []; });
+      _activeLayerId = _layers[0].id;
+      _tables = jQuery.extend(true, [], _layers[0].tables);
+    } else {
+      _layers = null;
+      _activeLayerId = null;
+      _tables = [];
+    }
     _counter = _tables.length + 1;
   }
 
@@ -20,6 +31,8 @@ var GridCore = (function () {
     _cfg = null;
     _tables = [];
     _counter = 1;
+    _layers = null;
+    _activeLayerId = null;
   }
 
   // ── Config ────────────────────────────────────────
@@ -74,6 +87,51 @@ var GridCore = (function () {
 
   function moveTable(id, col, row) {
     return updateTable(id, { col: col, row: row });
+  }
+
+  // ── Layer management ──────────────────────────────
+
+  function getLayers() {
+    return _layers || [];
+  }
+
+  function getActiveLayerId() {
+    return _activeLayerId;
+  }
+
+  function getActiveLayer() {
+    if (!_layers) return null;
+    return _layers.find(function (l) { return l.id === _activeLayerId; }) || null;
+  }
+
+  function switchLayer(id) {
+    if (!_layers) return false;
+    // Save current tables into the active layer
+    var current = getActiveLayer();
+    if (current) current.tables = jQuery.extend(true, [], _tables);
+    // Load the target layer
+    var target = _layers.find(function (l) { return l.id === id; });
+    if (!target) return false;
+    _activeLayerId = id;
+    _tables = jQuery.extend(true, [], target.tables);
+    _counter = _tables.length + 1;
+    GridEvents.emit("layer:switched", target);
+    return true;
+  }
+
+  function addLayer(layer) {
+    if (!_layers) _layers = [];
+    if (!Array.isArray(layer.tables)) layer.tables = [];
+    _layers.push(layer);
+    GridEvents.emit("layer:added", layer);
+  }
+
+  function getAllLayersLayout() {
+    if (!_layers) return null;
+    // Save current tables first so the snapshot is up-to-date
+    var current = getActiveLayer();
+    if (current) current.tables = jQuery.extend(true, [], _tables);
+    return _layers.map(function (l) { return jQuery.extend(true, {}, l); });
   }
 
   // ── Layout snapshot ───────────────────────────────
@@ -194,5 +252,11 @@ var GridCore = (function () {
     pxToGrid: pxToGrid,
     cursorToGrid: cursorToGrid,
     hexAlpha: hexAlpha,
+    getLayers: getLayers,
+    getActiveLayerId: getActiveLayerId,
+    getActiveLayer: getActiveLayer,
+    switchLayer: switchLayer,
+    addLayer: addLayer,
+    getAllLayersLayout: getAllLayersLayout,
   };
 })();

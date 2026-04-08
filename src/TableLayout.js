@@ -47,6 +47,7 @@ var TableLayout = (function () {
     $canvasWrap.append($canvas);
     $canvasWrap.append(GridZoom.buildControls());
     if (cfg.trashZone) $canvasWrap.append(GridRender.buildTrashZone());
+    if (cfg.layers && cfg.layers.length) $canvasWrap.append(GridLayers.buildToggleBtn());
 
     $wrapper.append(GridToolbar.build());
     $wrapper.append($canvasWrap);
@@ -75,6 +76,10 @@ var TableLayout = (function () {
     // ── Wire internal events to user callbacks ─────
     GridEvents.on("zoom:changed", function (level) {
       if (typeof cfg.onZoom === "function") cfg.onZoom(level);
+    });
+    GridEvents.on("layer:switched", function (layer) {
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(layer, GridCore.getLayout());
     });
 
     // ── Return instance API ────────────────────────
@@ -105,6 +110,33 @@ var TableLayout = (function () {
       },
       getConfig: function () {
         return GridCore.getConfig();
+      },
+
+      // Layers
+      getLayers: function () {
+        return GridCore.getLayers();
+      },
+      getActiveLayer: function () {
+        return GridCore.getActiveLayer();
+      },
+      switchLayer: function (id) {
+        if (GridCore.switchLayer(id)) {
+          jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+        }
+      },
+      addLayer: function (details) {
+        var label = (details && details.label) || "Layout";
+        var layer = {
+          id: "layer-" + Date.now(),
+          label: label,
+          icon: (details && details.icon) || label.charAt(0).toUpperCase(),
+          tables: (details && details.tables) || [],
+        };
+        GridCore.addLayer(layer);
+        return layer;
+      },
+      getAllLayersLayout: function () {
+        return GridCore.getAllLayersLayout();
       },
 
       // Tools

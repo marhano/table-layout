@@ -102,7 +102,9 @@ var GridConfig = (function () {
       namePrefix: "Table",
     },
 
-    tables: [],
+    // Layer switcher — set to an array of {id, label, icon, tables} to enable
+    // icon can be an FA class string (e.g. "fa-solid fa-utensils") or short text/emoji ("A", "1F")
+    layers: null,
 
     // Callbacks — user overrides these
     onSwap: null,
@@ -110,6 +112,8 @@ var GridConfig = (function () {
     onZoom: null,
     onTableCreated: null,
     onCreateTable: null,
+    onLayerChange: null,  // fn(layer, tables) — fired when active layer changes
+    onLayerAdd: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
   };
 
   /**
