@@ -167,6 +167,15 @@ var GridRender = (function () {
       });
   }
 
+  // ── Trash zone ─────────────────────────────────────
+
+  function buildTrashZone() {
+    return jQuery("<div>")
+      .addClass(ns("trash-zone"))
+      .attr("title", "Drop here to remove table")
+      .html('<i class="fa-solid fa-trash-can"></i>');
+  }
+
   // ── Public API ────────────────────────────────────
 
   return {
@@ -177,6 +186,7 @@ var GridRender = (function () {
     buildLegend: buildLegend,
     buildPlaceGhost: buildPlaceGhost,
     buildDragGhost: buildDragGhost,
+    buildTrashZone: buildTrashZone,
     ns: ns,
   };
 })();

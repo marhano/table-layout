@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T03:54:18.548Z
+ * Built: 2026-04-08T05:38:13.441Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -20,6 +20,7 @@ var GridConfig = (function () {
     gap: 8,
     cellSize: 70,
     draggable: true,
+    trashZone: true,
     swapAnimation: true,
     showSizeBadge: true,
     showHint: false,
@@ -599,6 +600,15 @@ var GridRender = (function () {
       });
   }
 
+  // ── Trash zone ─────────────────────────────────────
+
+  function buildTrashZone() {
+    return jQuery("<div>")
+      .addClass(ns("trash-zone"))
+      .attr("title", "Drop here to remove table")
+      .html('<i class="fa-solid fa-trash-can"></i>');
+  }
+
   // ── Public API ────────────────────────────────────
 
   return {
@@ -609,6 +619,7 @@ var GridRender = (function () {
     buildLegend: buildLegend,
     buildPlaceGhost: buildPlaceGhost,
     buildDragGhost: buildDragGhost,
+    buildTrashZone: buildTrashZone,
     ns: ns,
   };
 })();
@@ -805,6 +816,8 @@ var GridDrag = (function () {
     var gridSel = "#" + cfg.containerId + " .tl-layout-grid";
     var canvasSel = "#" + cfg.containerId + " .tl-canvas";
 
+    var trashSel = "#" + cfg.containerId + " .tl-trash-zone";
+
     jQuery(document).on(
       "dragstart.tl",
       gridSel + " .tl-table-card",
@@ -820,13 +833,42 @@ var GridDrag = (function () {
         e.originalEvent.dataTransfer.setDragImage(empty, 0, 0);
 
         jQuery(this).css("opacity", "0.25");
+        if (cfg.trashZone) jQuery(trashSel).addClass("tl-trash-zone--visible");
       },
     );
 
-    jQuery(document).on("dragend.tl", gridSel + " .tl-table-card", function () {
-      jQuery(this).css("opacity", "");
+    jQuery(document).on("dragend.tl", function () {
+      if (_dragId) {
+        jQuery('[data-table-id="' + _dragId + '"]').css("opacity", "");
+        _dragId = null;
+      }
       _removeGhost();
+      if (cfg.trashZone) jQuery(trashSel).removeClass("tl-trash-zone--visible tl-trash-zone--active");
+    });
+
+    if (!cfg.trashZone) return;
+
+    jQuery(document).on("dragover.tl", trashSel, function (e) {
+      e.preventDefault();
+      if (!_dragId) return;
+      jQuery(this).addClass("tl-trash-zone--active");
+      e.originalEvent.dataTransfer.dropEffect = "move";
+    });
+
+    jQuery(document).on("dragleave.tl", trashSel, function () {
+      jQuery(this).removeClass("tl-trash-zone--active");
+    });
+
+    jQuery(document).on("drop.tl", trashSel, function (e) {
+      e.preventDefault();
+      jQuery(this).removeClass("tl-trash-zone--visible tl-trash-zone--active");
+      if (!_dragId) return;
+      var id = _dragId;
       _dragId = null;
+      _removeGhost();
+      jQuery('[data-table-id="' + id + '"]').remove();
+      GridCore.removeTable(id);
+      if (typeof cfg.onLayoutChange === "function") cfg.onLayoutChange(GridCore.getLayout());
     });
 
     jQuery(document).on("dragover.tl", gridSel, function (e) {
@@ -858,6 +900,7 @@ var GridDrag = (function () {
     jQuery(document).on("drop.tl", gridSel, function (e) {
       e.preventDefault();
       _removeGhost();
+      if (cfg.trashZone) jQuery(trashSel).removeClass("tl-trash-zone--visible tl-trash-zone--active");
       if (!_dragId) return;
 
       var t = GridCore.tableById(_dragId);
@@ -1226,6 +1269,7 @@ var TableLayout = (function () {
     var $canvasWrap = jQuery("<div>").addClass("tl-canvas-wrap");
     $canvasWrap.append($canvas);
     $canvasWrap.append(GridZoom.buildControls());
+    if (cfg.trashZone) $canvasWrap.append(GridRender.buildTrashZone());
 
     $wrapper.append(GridToolbar.build());
     $wrapper.append($canvasWrap);

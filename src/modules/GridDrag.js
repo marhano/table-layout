@@ -7,6 +7,8 @@ var GridDrag = (function () {
     var gridSel = "#" + cfg.containerId + " .tl-layout-grid";
     var canvasSel = "#" + cfg.containerId + " .tl-canvas";
 
+    var trashSel = "#" + cfg.containerId + " .tl-trash-zone";
+
     jQuery(document).on(
       "dragstart.tl",
       gridSel + " .tl-table-card",
@@ -22,13 +24,42 @@ var GridDrag = (function () {
         e.originalEvent.dataTransfer.setDragImage(empty, 0, 0);
 
         jQuery(this).css("opacity", "0.25");
+        if (cfg.trashZone) jQuery(trashSel).addClass("tl-trash-zone--visible");
       },
     );
 
-    jQuery(document).on("dragend.tl", gridSel + " .tl-table-card", function () {
-      jQuery(this).css("opacity", "");
+    jQuery(document).on("dragend.tl", function () {
+      if (_dragId) {
+        jQuery('[data-table-id="' + _dragId + '"]').css("opacity", "");
+        _dragId = null;
+      }
       _removeGhost();
+      if (cfg.trashZone) jQuery(trashSel).removeClass("tl-trash-zone--visible tl-trash-zone--active");
+    });
+
+    if (!cfg.trashZone) return;
+
+    jQuery(document).on("dragover.tl", trashSel, function (e) {
+      e.preventDefault();
+      if (!_dragId) return;
+      jQuery(this).addClass("tl-trash-zone--active");
+      e.originalEvent.dataTransfer.dropEffect = "move";
+    });
+
+    jQuery(document).on("dragleave.tl", trashSel, function () {
+      jQuery(this).removeClass("tl-trash-zone--active");
+    });
+
+    jQuery(document).on("drop.tl", trashSel, function (e) {
+      e.preventDefault();
+      jQuery(this).removeClass("tl-trash-zone--visible tl-trash-zone--active");
+      if (!_dragId) return;
+      var id = _dragId;
       _dragId = null;
+      _removeGhost();
+      jQuery('[data-table-id="' + id + '"]').remove();
+      GridCore.removeTable(id);
+      if (typeof cfg.onLayoutChange === "function") cfg.onLayoutChange(GridCore.getLayout());
     });
 
     jQuery(document).on("dragover.tl", gridSel, function (e) {
@@ -60,6 +91,7 @@ var GridDrag = (function () {
     jQuery(document).on("drop.tl", gridSel, function (e) {
       e.preventDefault();
       _removeGhost();
+      if (cfg.trashZone) jQuery(trashSel).removeClass("tl-trash-zone--visible tl-trash-zone--active");
       if (!_dragId) return;
 
       var t = GridCore.tableById(_dragId);

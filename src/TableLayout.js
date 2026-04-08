@@ -46,6 +46,7 @@ var TableLayout = (function () {
     var $canvasWrap = jQuery("<div>").addClass("tl-canvas-wrap");
     $canvasWrap.append($canvas);
     $canvasWrap.append(GridZoom.buildControls());
+    if (cfg.trashZone) $canvasWrap.append(GridRender.buildTrashZone());
 
     $wrapper.append(GridToolbar.build());
     $wrapper.append($canvasWrap);
