@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-08T03:29:08.575Z
+ * Built: 2026-04-08T03:37:46.226Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -161,6 +161,9 @@ var GridConfig = (function () {
             for (var ukey in userConfig) {
                 if (!userConfig.hasOwnProperty(ukey)) continue;
                 if (result[ukey] === undefined) {
+                    result[ukey] = userConfig[ukey];
+                } else if (Array.isArray(userConfig[ukey])) {
+                    // Arrays (e.g. tables) are always replaced wholesale
                     result[ukey] = userConfig[ukey];
                 } else if (typeof userConfig[ukey] !== 'object' || userConfig[ukey] === null) {
                     result[ukey] = userConfig[ukey];

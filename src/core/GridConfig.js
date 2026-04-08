@@ -153,6 +153,9 @@ var GridConfig = (function () {
                 if (!userConfig.hasOwnProperty(ukey)) continue;
                 if (result[ukey] === undefined) {
                     result[ukey] = userConfig[ukey];
+                } else if (Array.isArray(userConfig[ukey])) {
+                    // Arrays (e.g. tables) are always replaced wholesale
+                    result[ukey] = userConfig[ukey];
                 } else if (typeof userConfig[ukey] !== 'object' || userConfig[ukey] === null) {
                     result[ukey] = userConfig[ukey];
                 }
