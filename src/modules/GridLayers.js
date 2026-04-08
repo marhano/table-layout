@@ -4,68 +4,79 @@
  * Only active when cfg.layers is defined.
  */
 var GridLayers = (function () {
-  var _$panel = null;
+  var _$wrap = null;
 
-  // ── Public: toggle button ─────────────────────────
+  // ── Public: build wrapper (button + slide-down panel) ─────────
 
-  function buildToggleBtn() {
-    return jQuery("<button>")
-      .addClass("tl-layers-btn")
+  function build() {
+    _$wrap = jQuery("<div>").addClass("tl-layers-wrap");
+
+    var $btn = jQuery("<button>")
+      .addClass("tl-layers-btn tl-layers-btn--active")
       .attr("title", "Switch Layout")
       .html('<i class="fa-solid fa-layer-group"></i>')
       .on("click", function (e) {
         e.stopPropagation();
-        _$panel ? _closePanel() : _openPanel();
+        var isOpen = _$wrap.find(".tl-layers-panel").hasClass("tl-layers-panel--open");
+        if (isOpen) {
+          _closePanel();
+        } else {
+          _openPanel();
+        }
       });
+
+    var $panel = _buildPanel();
+    $panel.addClass("tl-layers-panel--open");
+
+    _$wrap.append($btn);
+    _$wrap.append($panel);
+
+    return _$wrap;
   }
 
   // ── Panel ─────────────────────────────────────────
 
-  function _openPanel() {
-    _closePanel();
+  function _buildPanel() {
+    var $panel = jQuery("<div>").addClass("tl-layers-panel");
+    $panel.on("click", function (e) { e.stopPropagation(); });
 
-    var cfg = GridCore.getConfig();
+    _renderPanelContent($panel);
+
+    return $panel;
+  }
+
+  function _renderPanelContent($panel) {
+    $panel.empty();
+
     var layers = GridCore.getLayers();
     var activeId = GridCore.getActiveLayerId();
-
-    _$panel = jQuery("<div>").addClass("tl-layers-panel");
 
     // Layer list (scrollable, max 3 visible)
     var $list = jQuery("<div>").addClass("tl-layers-list");
     jQuery.each(layers, function (_, layer) {
       $list.append(_buildLayerItem(layer, layer.id === activeId));
     });
-    _$panel.append($list);
+    $panel.append($list);
 
     // Separator
-    _$panel.append(jQuery("<div>").addClass("tl-layers-separator"));
+    $panel.append(jQuery("<div>").addClass("tl-layers-separator"));
 
-    // Add layout button
-    var $addBtn = jQuery("<button>")
-      .addClass("tl-layers-add-btn")
-      .html('<i class="fa-solid fa-plus"></i> Add Layout')
-      .on("click", function (e) {
-        e.stopPropagation();
-        _showAddForm();
-      });
-    _$panel.append($addBtn);
+    // Always-visible add form
+    $panel.append(_buildAddForm($panel));
+  }
 
-    jQuery(".tl-canvas-wrap").append(_$panel);
-
-    // Close when clicking outside
-    setTimeout(function () {
-      jQuery(document).one("click.tl-layers-outside", function () {
-        _closePanel();
-      });
-    }, 0);
+  function _openPanel() {
+    if (!_$wrap) return;
+    var $panel = _$wrap.find(".tl-layers-panel");
+    _renderPanelContent($panel);
+    $panel.addClass("tl-layers-panel--open");
+    _$wrap.find(".tl-layers-btn").addClass("tl-layers-btn--active");
   }
 
   function _closePanel() {
-    if (_$panel) {
-      _$panel.remove();
-      _$panel = null;
-    }
-    jQuery(document).off("click.tl-layers-outside");
+    if (!_$wrap) return;
+    _$wrap.find(".tl-layers-panel").removeClass("tl-layers-panel--open");
+    _$wrap.find(".tl-layers-btn").removeClass("tl-layers-btn--active");
   }
 
   // ── Layer item ────────────────────────────────────
@@ -73,18 +84,18 @@ var GridLayers = (function () {
   function _buildLayerItem(layer, isActive) {
     var $item = jQuery("<div>")
       .addClass("tl-layers-item" + (isActive ? " tl-layers-item--active" : ""))
-      .on("click", function (e) {
-        e.stopPropagation();
+      .attr("title", layer.label)
+      .on("click", function () {
         if (isActive) return;
         GridCore.switchLayer(layer.id);
         _rebuildGrid();
-        _closePanel();
+        var $panel = _$wrap.find(".tl-layers-panel");
+        _renderPanelContent($panel);
         var cfg = GridCore.getConfig();
         if (typeof cfg.onLayerChange === "function")
           cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
       });
 
-    // Icon: FA class string or plain text/emoji
     var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;
     var $icon = jQuery("<div>").addClass("tl-layers-icon");
     if (isFaIcon) {
@@ -94,78 +105,77 @@ var GridLayers = (function () {
     }
 
     $item.append($icon);
-    $item.append(
-      jQuery("<span>").addClass("tl-layers-label").text(layer.label)
-    );
-
-    if (isActive) {
-      $item.append(
-        jQuery("<i>").addClass("fa-solid fa-check tl-layers-active-mark")
-      );
-    }
 
     return $item;
   }
 
-  // ── Add layer form ────────────────────────────────
+  // ── Add layer form (shown when Add Layout is clicked) ────────
 
-  function _showAddForm() {
-    if (!_$panel) return;
-    _$panel.find(".tl-layers-add-form").remove();
-
+  function _buildAddForm($panel) {
     var cfg = GridCore.getConfig();
 
-    // Custom hook
-    if (typeof cfg.onLayerAdd === "function") {
-      cfg.onLayerAdd(function (details) {
-        _createLayer(details);
-      });
-      return;
-    }
-
-    // Default inline form
-    var $form = jQuery("<div>")
-      .addClass("tl-layers-add-form")
-      .on("click", function (e) { e.stopPropagation(); });
-
-    var $label = jQuery("<input>")
-      .attr({ type: "text", placeholder: "Layout name", maxlength: 30 });
-
-    var $icon = jQuery("<input>")
-      .attr({ type: "text", placeholder: 'Icon (fa-solid fa-… or A, 1…)', maxlength: 40 });
-
-    var $actions = jQuery("<div>").addClass("tl-layers-add-actions");
-
-    var $cancel = jQuery("<button>")
-      .addClass("tl-btn tl-btn-cancel")
-      .text("Cancel")
-      .on("click", function (e) {
-        e.stopPropagation();
-        $form.remove();
+    var $addBtn = jQuery("<button>")
+      .addClass("tl-layers-add-submit")
+      .html('<i class="fa-solid fa-plus"></i>')
+      .on("click", function () {
+        if (typeof cfg.onLayerAdd === "function") {
+          cfg.onLayerAdd(function (details) { _createLayer(details, $panel); });
+          return;
+        }
+        _openAddModal($panel);
       });
 
-    var $create = jQuery("<button>")
-      .addClass("tl-btn tl-btn-primary")
-      .text("Add")
-      .on("click", function (e) {
-        e.stopPropagation();
-        var label = jQuery.trim($label.val());
-        if (!label) { $label.addClass("tl-input-error").trigger("focus"); return; }
-        $label.removeClass("tl-input-error");
-        var icon = jQuery.trim($icon.val()) || label.charAt(0).toUpperCase();
-        _createLayer({ label: label, icon: icon });
-      });
-
-    $label.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
-
-    $actions.append($cancel, $create);
-    $form.append($label, $icon, $actions);
-    _$panel.append($form);
-
-    setTimeout(function () { $label.trigger("focus"); }, 50);
+    return $addBtn;
   }
 
-  function _createLayer(details) {
+  function _openAddModal($panel) {
+    var $overlay = jQuery("<div>").addClass("tl-overlay");
+
+    var $modal = jQuery("<div>").addClass("tl-modal");
+
+    $modal.append(
+      jQuery("<h2>").html('<i class="fa-solid fa-layer-group"></i> New Layout')
+    );
+
+    var $nameField = jQuery("<div>").addClass("tl-field");
+    $nameField.append(jQuery("<label>").text("Name"));
+    var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Layout name", maxlength: 30 });
+    $nameField.append($nameInput);
+
+    var $iconField = jQuery("<div>").addClass("tl-field");
+    $iconField.append(jQuery("<label>").text("Icon"));
+    var $iconInput = jQuery("<input>").attr({ type: "text", placeholder: "fa-solid fa-… or A, 1…", maxlength: 40 });
+    $iconField.append($iconInput);
+
+    var $actions = jQuery("<div>").addClass("tl-modal-actions");
+
+    var $cancel = jQuery("<button>").addClass("tl-btn tl-btn-cancel").text("Cancel")
+      .on("click", function () { $overlay.remove(); });
+
+    var $create = jQuery("<button>").addClass("tl-btn tl-btn-primary").text("Add Layout")
+      .on("click", function () {
+        var labelVal = jQuery.trim($nameInput.val());
+        if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
+        $nameInput.removeClass("tl-input-error");
+        var iconVal = jQuery.trim($iconInput.val()) || labelVal.charAt(0).toUpperCase();
+        $overlay.remove();
+        _createLayer({ label: labelVal, icon: iconVal }, $panel);
+      });
+
+    $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
+    $nameInput.on("keydown", function (e) { if (e.key === "Enter") $create.trigger("click"); });
+
+    $actions.append($cancel, $create);
+    $modal.append($nameField, $iconField, $actions);
+    $overlay.append($modal);
+    jQuery("body").append($overlay);
+
+    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+
+    setTimeout(function () { $nameInput.trigger("focus"); }, 50);
+  }
+
+  function _createLayer(details, $panel) {
     var label = details.label || "Layout";
     var layer = {
       id: "layer-" + Date.now(),
@@ -176,7 +186,7 @@ var GridLayers = (function () {
     GridCore.addLayer(layer);
     GridCore.switchLayer(layer.id);
     _rebuildGrid();
-    _closePanel();
+    if ($panel) _renderPanelContent($panel);
     var cfg = GridCore.getConfig();
     if (typeof cfg.onLayerChange === "function")
       cfg.onLayerChange(layer, []);
@@ -188,5 +198,5 @@ var GridLayers = (function () {
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
   }
 
-  return { buildToggleBtn: buildToggleBtn };
+  return { build: build };
 })();

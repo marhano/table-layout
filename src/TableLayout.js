@@ -47,7 +47,7 @@ var TableLayout = (function () {
     $canvasWrap.append($canvas);
     $canvasWrap.append(GridZoom.buildControls());
     if (cfg.trashZone) $canvasWrap.append(GridRender.buildTrashZone());
-    if (cfg.layers && cfg.layers.length) $canvasWrap.append(GridLayers.buildToggleBtn());
+    if (cfg.layers && cfg.layers.length) $canvasWrap.append(GridLayers.build());
 
     $wrapper.append(GridToolbar.build());
     $wrapper.append($canvasWrap);
