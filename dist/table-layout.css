@@ -93,10 +93,12 @@
     font-weight: 600;
     transition: all 0.15s;
     padding: 4px;
+    background: transparent;
 }
 
 .tl-shape-tool-btn:hover {
     opacity: 0.8;
+    background: var(--tl-surface-bright);
 }
 
 .tl-shape-tool-btn.active {
@@ -501,7 +503,7 @@
    ───────────────────────────────────────────────────────────── */
 .tl-shape-panel {
     position: absolute;
-    top: 18px;
+    top: 50%;
     left: 18px;
     z-index: 20;
     display: flex;
@@ -514,6 +516,7 @@
     -webkit-backdrop-filter: blur(6px);
     border-radius: 14px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-50%);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -659,6 +662,75 @@
 
 .tl-input-error {
     border-color: var(--tl-danger) !important;
+}
+
+/* ── Layer Preview Popup (isometric hover) ── */
+.tl-layer-preview-popup {
+    position: absolute;
+    right: calc(100% + 12px);
+    top: 0;
+    padding: 12px 14px 14px;
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 30;
+    overflow: visible;
+    white-space: nowrap;
+}
+
+.tl-layer-preview-popup--visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.tl-layer-preview-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--tl-surface-alt);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.tl-layer-preview-iso {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 72px;
+    overflow: visible;
+}
+
+.tl-layer-preview-grid-wrap {
+    display: inline-block;
+    transform: rotateX(55deg) rotateZ(-45deg);
+    transform-origin: center center;
+}
+
+.tl-layer-preview-grid {
+    display: grid;
+    position: relative;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 2px;
+}
+
+.tl-layer-preview-cell {
+    background: #f1f5f9;
+    border: 0.5px solid #dde3ea;
+}
+
+.tl-layer-preview-table {
+    position: relative;
+    z-index: 1;
+    border-radius: 1px;
+    opacity: 0.88;
 }
 
 /* ─────────────────────────────────────────────────────────────

@@ -5,6 +5,8 @@
  */
 var GridLayers = (function () {
   var _$wrap = null;
+  var _$activePreview = null;
+  var _hoverTimer = null;
 
   // ── Public: build wrapper (button + slide-down panel) ─────────
 
@@ -81,10 +83,88 @@ var GridLayers = (function () {
 
   // ── Layer item ────────────────────────────────────
 
+  function _showPreview(layer) {
+    _hidePreview();
+    _$activePreview = _buildLayerPreview(layer);
+    _$wrap.append(_$activePreview);
+    setTimeout(function () {
+      if (_$activePreview) _$activePreview.addClass("tl-layer-preview-popup--visible");
+    }, 10);
+  }
+
+  function _hidePreview() {
+    if (_$activePreview) {
+      _$activePreview.remove();
+      _$activePreview = null;
+    }
+  }
+
+  function _buildLayerPreview(layer) {
+    var cfg = GridCore.getConfig();
+    var tables = layer.id === GridCore.getActiveLayerId()
+      ? GridCore.getTables()
+      : (layer.tables || []);
+    var cellSize = 4;
+    var gap = 1;
+    var cols = cfg.columns;
+    var rows = cfg.rows;
+
+    var $popup = jQuery("<div>").addClass("tl-layer-preview-popup");
+    $popup.append(
+      jQuery("<div>").addClass("tl-layer-preview-label").text(layer.label)
+    );
+
+    var $isoWrap = jQuery("<div>").addClass("tl-layer-preview-iso");
+    var $gridWrap = jQuery("<div>").addClass("tl-layer-preview-grid-wrap");
+    var $grid = jQuery("<div>").addClass("tl-layer-preview-grid").css({
+      "grid-template-columns": "repeat(" + cols + ", " + cellSize + "px)",
+      "grid-template-rows":    "repeat(" + rows + ", " + cellSize + "px)",
+      "gap": gap + "px",
+      "width":  (cols * cellSize + (cols - 1) * gap) + "px",
+      "height": (rows * cellSize + (rows - 1) * gap) + "px",
+    });
+
+    for (var r = 1; r <= rows; r++) {
+      for (var c = 1; c <= cols; c++) {
+        $grid.append(
+          jQuery("<div>").addClass("tl-layer-preview-cell").css({
+            "grid-column": c + " / span 1",
+            "grid-row":    r + " / span 1",
+          })
+        );
+      }
+    }
+
+    jQuery.each(tables, function (_, t) {
+      var statusColor = cfg.statusColors[t.status] || "#6b7280";
+      $grid.append(
+        jQuery("<div>").addClass("tl-layer-preview-table").css({
+          "grid-column": t.col + " / span " + t.colSpan,
+          "grid-row":    t.row + " / span " + t.rowSpan,
+          "background":  statusColor,
+        })
+      );
+    });
+
+    $gridWrap.append($grid);
+    $isoWrap.append($gridWrap);
+    $popup.append($isoWrap);
+
+    return $popup;
+  }
+
   function _buildLayerItem(layer, isActive) {
     var $item = jQuery("<div>")
       .addClass("tl-layers-item" + (isActive ? " tl-layers-item--active" : ""))
       .attr("title", layer.label)
+      .on("mouseenter", function () {
+        clearTimeout(_hoverTimer);
+        _hoverTimer = setTimeout(function () { _showPreview(layer); }, 500);
+      })
+      .on("mouseleave", function () {
+        clearTimeout(_hoverTimer);
+        _hidePreview();
+      })
       .on("click", function () {
         if (isActive) return;
         GridCore.switchLayer(layer.id);
