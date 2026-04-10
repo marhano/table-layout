@@ -5,6 +5,7 @@ var GridToolbar = (function () {
   var _$editSection = null;
   var _nameEditing = false;
   var _$iconPicker = null;
+  var _$settingsPopup = null;
 
   // ── Toolbar build ─────────────────────────────────
 
@@ -39,17 +40,20 @@ var GridToolbar = (function () {
     $toolbar.append($left);
     $toolbar.append(jQuery("<div>").addClass("tl-toolbar-spacer"));
 
-    // Right: edit/save/discard (only when editMode is enabled)
-    if (cfg.editMode !== false) {
+    // Right: settings + save/discard
+    if (cfg.layers && cfg.layers.length) {
       _$editSection = jQuery("<div>").addClass("tl-toolbar-actions");
       _renderEditControls();
       $toolbar.append(_$editSection);
     }
 
-    // Close icon picker on outside click
+    // Close icon picker / settings popup on outside click
     jQuery(document).on("mousedown.tl-iconpicker", function (e) {
       if (_$iconPicker && !jQuery(e.target).closest(".tl-icon-picker, .tl-toolbar-icon-badge").length) {
         _closeIconPicker();
+      }
+      if (_$settingsPopup && !jQuery(e.target).closest(".tl-settings-popup, .tl-toolbar-btn--settings").length) {
+        _closeSettingsPopup();
       }
     });
 
@@ -104,6 +108,7 @@ var GridToolbar = (function () {
   function _startNameEdit() {
     var cfg = GridCore.getConfig();
     if (!cfg.layers || !cfg.layers.length) return;
+    if (cfg.editMode === false || !GridCore.isEditing()) return;
     if (_nameEditing) return;
     var layer = GridCore.getActiveLayer();
     if (!layer) return;
@@ -155,6 +160,8 @@ var GridToolbar = (function () {
   // ── Icon picker popup ─────────────────────────────
 
   function _toggleIconPicker() {
+    var cfg = GridCore.getConfig();
+    if (cfg.editMode === false || !GridCore.isEditing()) return;
     if (_$iconPicker) {
       _closeIconPicker();
     } else {
@@ -241,21 +248,6 @@ var GridToolbar = (function () {
       $picker.append($textSection);
     }
 
-    // Delete layer section (only if more than 1 layer)
-    var layers = GridCore.getLayers();
-    if (layers.length > 1) {
-      var $deleteSection = jQuery("<div>").addClass("tl-icon-picker-delete-section");
-      var $deleteBtn = jQuery("<button>")
-        .addClass("tl-icon-picker-delete-btn")
-        .html('<i class="fa-solid fa-trash-can"></i> Delete Layout')
-        .on("click", function () {
-          _closeIconPicker();
-          _confirmDeleteLayer(layer);
-        });
-      $deleteSection.append($deleteBtn);
-      $picker.append($deleteSection);
-    }
-
     // Position relative to icon badge
     _$layoutIcon.addClass("tl-toolbar-icon-badge--picker-open");
     var $left = _$layoutIcon.closest(".tl-toolbar-left");
@@ -320,13 +312,15 @@ var GridToolbar = (function () {
     });
   }
 
-  // ── Edit controls (editMode only) ─────────────────
+  // ── Edit controls ─────────────────────────────────
 
   function _renderEditControls() {
     if (!_$editSection) return;
     _$editSection.empty();
 
-    if (GridCore.isEditing()) {
+    var cfg = GridCore.getConfig();
+
+    if (cfg.editMode !== false && GridCore.isEditing()) {
       _$editSection.append(
         jQuery("<button>")
           .addClass("tl-toolbar-btn tl-toolbar-btn--save")
@@ -339,20 +333,82 @@ var GridToolbar = (function () {
           .html('<i class="fa-solid fa-xmark"></i><span>Discard</span>')
           .on("click", _handleDiscard)
       );
-    } else {
-      _$editSection.append(
-        jQuery("<button>")
-          .addClass("tl-toolbar-btn tl-toolbar-btn--edit")
-          .attr("title", "Edit layout")
-          .html('<i class="fa-solid fa-pen"></i><span>Edit</span>')
-          .on("click", _handleEdit)
-      );
     }
+
+    // Settings gear — always visible when layers exist
+    var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
+    var $settingsBtn = jQuery("<button>")
+      .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
+      .attr("title", "Layout settings")
+      .html('<i class="fa-solid fa-gear"></i>')
+      .on("click", function (e) {
+        e.stopPropagation();
+        _toggleSettingsPopup($settingsWrap);
+      });
+    $settingsWrap.append($settingsBtn);
+    _$editSection.append($settingsWrap);
+  }
+
+  // ── Settings popup ────────────────────────────────
+
+  function _toggleSettingsPopup($anchor) {
+    if (_$settingsPopup) {
+      _closeSettingsPopup();
+    } else {
+      _openSettingsPopup($anchor);
+    }
+  }
+
+  function _closeSettingsPopup() {
+    if (_$settingsPopup) {
+      _$settingsPopup.remove();
+      _$settingsPopup = null;
+    }
+  }
+
+  function _openSettingsPopup($anchor) {
+    _closeSettingsPopup();
+    var cfg = GridCore.getConfig();
+    var layer = GridCore.getActiveLayer();
+
+    var $popup = jQuery("<div>").addClass("tl-settings-popup");
+
+    // Edit option (only when editMode is enabled and not currently editing)
+    if (cfg.editMode !== false && !GridCore.isEditing()) {
+      var $editOpt = jQuery("<button>")
+        .addClass("tl-settings-option")
+        .html('<i class="fa-solid fa-pen"></i><span>Edit Layout</span>')
+        .on("click", function () {
+          _closeSettingsPopup();
+          _handleEdit();
+        });
+      $popup.append($editOpt);
+    }
+
+    // Delete option (only if more than 1 layer)
+    var layers = GridCore.getLayers();
+    if (layers.length > 1 && layer) {
+      var $deleteOpt = jQuery("<button>")
+        .addClass("tl-settings-option tl-settings-option--danger")
+        .html('<i class="fa-solid fa-trash-can"></i><span>Delete Layout</span>')
+        .on("click", function () {
+          _closeSettingsPopup();
+          _confirmDeleteLayer(layer);
+        });
+      $popup.append($deleteOpt);
+    }
+
+    $anchor.append($popup);
+    _$settingsPopup = $popup;
+
+    // Animate in
+    setTimeout(function () { $popup.addClass("tl-settings-popup--open"); }, 10);
   }
 
   function _handleEdit() {
     GridCore.enterEditMode();
     _renderEditControls();
+    _setEditableState(true);
     jQuery(".tl-root").removeClass("tl-view-mode").addClass("tl-edit-mode");
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
   }
@@ -361,6 +417,7 @@ var GridToolbar = (function () {
     deactivate();
     GridCore.saveEdit();
     _renderEditControls();
+    _setEditableState(false);
     jQuery(".tl-root").removeClass("tl-edit-mode").addClass("tl-view-mode");
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
     var cfg = GridCore.getConfig();
@@ -371,10 +428,16 @@ var GridToolbar = (function () {
     deactivate();
     GridCore.discardEdit();
     _renderEditControls();
+    _setEditableState(false);
     var layer = GridCore.getActiveLayer();
     _refreshLayerDisplay(layer);
     jQuery(".tl-root").removeClass("tl-edit-mode").addClass("tl-view-mode");
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+  }
+
+  function _setEditableState(editable) {
+    if (_$layoutIcon) _$layoutIcon.toggleClass("tl-toolbar-icon-badge--editable", editable);
+    if (_$layoutName) _$layoutName.toggleClass("tl-toolbar-layout-name--editable", editable);
   }
 
   // ── Shape panel ───────────────────────────────────
