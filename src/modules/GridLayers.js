@@ -216,6 +216,13 @@ var GridLayers = (function () {
   }
 
   function _openAddModal($panel) {
+    var cfg = GridCore.getConfig();
+    var pickerCfg = cfg.iconPicker || {};
+    var icons = pickerCfg.icons || [];
+    var maxText = pickerCfg.maxTextLength || 4;
+    var allowText = pickerCfg.allowText !== false;
+    var _selectedIcon = "";
+
     var $overlay = jQuery("<div>").addClass("tl-overlay");
 
     var $modal = jQuery("<div>").addClass("tl-modal");
@@ -229,10 +236,72 @@ var GridLayers = (function () {
     var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Layout name", maxlength: 30 });
     $nameField.append($nameInput);
 
+    // Icon field with picker grid
     var $iconField = jQuery("<div>").addClass("tl-field");
     $iconField.append(jQuery("<label>").text("Icon"));
-    var $iconInput = jQuery("<input>").attr({ type: "text", placeholder: "fa-solid fa-… or A, 1…", maxlength: 40 });
-    $iconField.append($iconInput);
+
+    // Preview of selected icon
+    var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
+    $iconPreview.text("?");
+    $iconField.append($iconPreview);
+
+    function _updatePreview(val) {
+      $iconPreview.empty();
+      if (!val) { $iconPreview.text("?"); return; }
+      if (val.indexOf("fa-") !== -1) {
+        $iconPreview.append(jQuery("<i>").addClass(val));
+      } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
+        $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
+      } else {
+        $iconPreview.text(val);
+      }
+    }
+
+    // Icon grid
+    if (icons.length) {
+      var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
+      jQuery.each(icons, function (_, ico) {
+        var $btn = jQuery("<button>")
+          .addClass("tl-icon-picker-btn")
+          .attr({ "title": ico.label || "", "type": "button" })
+          .on("click", function () {
+            _selectedIcon = ico.value;
+            $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+            jQuery(this).addClass("tl-icon-picker-btn--active");
+            if ($textInput) $textInput.val("");
+            _updatePreview(_selectedIcon);
+          });
+
+        if (ico.type === "fa") {
+          $btn.append(jQuery("<i>").addClass(ico.value));
+        } else if (ico.type === "svg" || ico.type === "img") {
+          $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img"));
+        } else {
+          $btn.text(ico.value);
+        }
+        $grid.append($btn);
+      });
+      $iconField.append($grid);
+    }
+
+    // Text input fallback
+    var $textInput = null;
+    if (allowText) {
+      var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
+      $textInput = jQuery("<input>")
+        .addClass("tl-icon-picker-text-input")
+        .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
+        .on("input", function () {
+          var v = jQuery.trim(jQuery(this).val());
+          if (v) {
+            _selectedIcon = v;
+            $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+            _updatePreview(v);
+          }
+        });
+      $textRow.append($textInput);
+      $iconField.append($textRow);
+    }
 
     var $actions = jQuery("<div>").addClass("tl-modal-actions");
 
@@ -244,7 +313,7 @@ var GridLayers = (function () {
         var labelVal = jQuery.trim($nameInput.val());
         if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
         $nameInput.removeClass("tl-input-error");
-        var iconVal = jQuery.trim($iconInput.val()) || labelVal.charAt(0).toUpperCase();
+        var iconVal = _selectedIcon || labelVal.charAt(0).toUpperCase();
         $overlay.remove();
         _createLayer({ label: labelVal, icon: iconVal }, $panel);
       });
