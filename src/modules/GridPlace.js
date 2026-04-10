@@ -157,6 +157,12 @@ var GridPlace = (function () {
     });
     $status.val(cfg.newTable.defaultStatus || "available");
 
+    // Update header shape color when status changes
+    $status.on("change", function () {
+      var newColor = cfg.statusColors[jQuery(this).val()] || "#6b7280";
+      $modal.find(".tl-modal-preview").css("background", newColor);
+    });
+
     $modal.append(
       jQuery("<div>")
         .addClass("tl-field-row")

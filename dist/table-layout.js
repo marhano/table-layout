@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-10T05:56:03.505Z
+ * Built: 2026-04-10T07:12:32.356Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -28,28 +28,28 @@ var GridConfig = (function () {
 
     theme: {
       // Primary accent — buttons, active states, focus rings, layer switcher
-      primary:        "#6366f1",
-      primaryDark:    "#4f46e5",
-      primaryLight:   "#818cf8",
+      primary: "#6366f1",
+      primaryDark: "#4f46e5",
+      primaryLight: "#818cf8",
       // Surface — toolbar, layer panel background (light by default)
-      surface:        "#f8fafc",
-      surfaceAlt:     "#334155",   // secondary: separators, icon backgrounds
-      surfaceHover:   "#475569",   // hover on surface elements
-      surfaceMuted:   "#64748b",   // labels, secondary text
-      surfaceSubtle:  "#94a3b8",   // icon color on dark elements
-      surfaceBright:  "#f1f5f9",   // cancel button bg, highlights
+      surface: "#f8fafc",
+      surfaceAlt: "#334155", // secondary: separators, icon backgrounds
+      surfaceHover: "#475569", // hover on surface elements
+      surfaceMuted: "#64748b", // labels, secondary text
+      surfaceSubtle: "#94a3b8", // icon color on dark elements
+      surfaceBright: "#f1f5f9", // cancel button bg, highlights
       // Semantic
-      danger:         "#dc2626",   // errors, trash zone
-      border:         "#e5e7eb",   // canvas border, input borders
+      danger: "#dc2626", // errors, trash zone
+      border: "#e5e7eb", // canvas border, input borders
       // Zoom controls
-      zoomBg:         "rgba(255,255,255,0.92)",
-      zoomBtnBg:      "#f1f5f9",
-      zoomBtnColor:   "#334155",
-      zoomBtnHover:   "#e2e8f0",
+      zoomBg: "rgba(255,255,255,0.92)",
+      zoomBtnBg: "#f1f5f9",
+      zoomBtnColor: "#334155",
+      zoomBtnHover: "#e2e8f0",
       // Canvas
-      canvasHeight:   "600px",
-      gridBg:         "#ffffff",
-      cellBg:         "#fbfbfb",
+      canvasHeight: "600px",
+      gridBg: "#ffffff",
+      cellBg: "#fbfbfb",
     },
 
     zoom: {
@@ -67,9 +67,10 @@ var GridConfig = (function () {
     },
 
     statusColors: {
-      available: "#16a34a",
-      occupied: "#e94560",
-      reserved: "#d97706",
+      ordering: "#3b82f6",
+      payment: "#e94560",
+      paid: "#16a34a",
+      unoccupied: "#6b7280",
     },
 
     // Each shape defines its own CSS rules — no code changes needed to add one
@@ -136,26 +137,26 @@ var GridConfig = (function () {
     // Icon picker for layer icons
     // icon types: "fa" (FontAwesome class), "svg" (URL/path to SVG), "img" (URL/path to PNG/JPG/etc.)
     iconPicker: {
-      maxTextLength: 4,         // max chars when using text as icon
-      allowText: true,          // allow plain-text icons
+      maxTextLength: 4, // max chars when using text as icon
+      allowText: true, // allow plain-text icons
       icons: [
         // FontAwesome icons
-        { type: "fa", value: "fa-solid fa-utensils",      label: "Utensils" },
-        { type: "fa", value: "fa-solid fa-mug-saucer",    label: "Coffee" },
+        { type: "fa", value: "fa-solid fa-utensils", label: "Utensils" },
+        { type: "fa", value: "fa-solid fa-mug-saucer", label: "Coffee" },
         { type: "fa", value: "fa-solid fa-champagne-glasses", label: "Bar" },
-        { type: "fa", value: "fa-solid fa-couch",         label: "Lounge" },
+        { type: "fa", value: "fa-solid fa-couch", label: "Lounge" },
         { type: "fa", value: "fa-solid fa-umbrella-beach", label: "Patio" },
-        { type: "fa", value: "fa-solid fa-music",         label: "Music" },
-        { type: "fa", value: "fa-solid fa-star",          label: "Star" },
-        { type: "fa", value: "fa-solid fa-heart",         label: "Heart" },
-        { type: "fa", value: "fa-solid fa-fire",          label: "Fire" },
-        { type: "fa", value: "fa-solid fa-bolt",          label: "Bolt" },
-        { type: "fa", value: "fa-solid fa-leaf",          label: "Leaf" },
-        { type: "fa", value: "fa-solid fa-cake-candles",  label: "Party" },
+        { type: "fa", value: "fa-solid fa-music", label: "Music" },
+        { type: "fa", value: "fa-solid fa-star", label: "Star" },
+        { type: "fa", value: "fa-solid fa-heart", label: "Heart" },
+        { type: "fa", value: "fa-solid fa-fire", label: "Fire" },
+        { type: "fa", value: "fa-solid fa-bolt", label: "Bolt" },
+        { type: "fa", value: "fa-solid fa-leaf", label: "Leaf" },
+        { type: "fa", value: "fa-solid fa-cake-candles", label: "Party" },
         { type: "fa", value: "fa-solid fa-bell-concierge", label: "Service" },
-        { type: "fa", value: "fa-solid fa-wine-glass",    label: "Wine" },
-        { type: "fa", value: "fa-solid fa-burger",        label: "Burger" },
-        { type: "fa", value: "fa-solid fa-pizza-slice",   label: "Pizza" },
+        { type: "fa", value: "fa-solid fa-wine-glass", label: "Wine" },
+        { type: "fa", value: "fa-solid fa-burger", label: "Burger" },
+        { type: "fa", value: "fa-solid fa-pizza-slice", label: "Pizza" },
         // SVG example (user provides path):
         // { type: "svg", value: "/icons/custom.svg", label: "Custom" },
         // Image example (user provides path):
@@ -169,10 +170,10 @@ var GridConfig = (function () {
     onZoom: null,
     onTableCreated: null,
     onCreateTable: null,
-    onLayerChange: null,  // fn(layer, tables) — fired when active layer changes
-    onLayerDelete: null,  // fn(removedLayer) — fired when a layer is deleted
+    onLayerChange: null, // fn(layer, tables) — fired when active layer changes
+    onLayerDelete: null, // fn(removedLayer) — fired when a layer is deleted
     onLayerReorder: null, // fn(layers) — fired when layers are reordered
-    onCreateLayer: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
+    onCreateLayer: null, // fn(commit) — override the default add-layer form; call commit({label, icon})
   };
 
   /**
@@ -1758,6 +1759,12 @@ var GridPlace = (function () {
       );
     });
     $status.val(cfg.newTable.defaultStatus || "available");
+
+    // Update header shape color when status changes
+    $status.on("change", function () {
+      var newColor = cfg.statusColors[jQuery(this).val()] || "#6b7280";
+      $modal.find(".tl-modal-preview").css("background", newColor);
+    });
 
     $modal.append(
       jQuery("<div>")
