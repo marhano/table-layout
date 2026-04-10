@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-10T02:55:47.598Z
+ * Built: 2026-04-10T03:23:20.559Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -169,6 +169,8 @@ var GridConfig = (function () {
     onTableCreated: null,
     onCreateTable: null,
     onLayerChange: null,  // fn(layer, tables) — fired when active layer changes
+    onLayerDelete: null,  // fn(removedLayer) — fired when a layer is deleted
+    onLayerReorder: null, // fn(layers) — fired when layers are reordered
     onCreateLayer: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
   };
 
@@ -414,6 +416,40 @@ var GridCore = (function () {
     GridEvents.emit("layer:added", layer);
   }
 
+  function deleteLayer(id) {
+    if (!_layers || _layers.length <= 1) return false;
+    var idx = _layers.findIndex(function (l) { return l.id === id; });
+    if (idx === -1) return false;
+    var removed = _layers.splice(idx, 1)[0];
+    // If we deleted the active layer, switch to the first remaining one
+    if (_activeLayerId === id) {
+      var next = _layers[Math.min(idx, _layers.length - 1)];
+      _activeLayerId = next.id;
+      _tables = jQuery.extend(true, [], next.tables);
+      _counter = _tables.length + 1;
+      GridEvents.emit("layer:switched", next);
+    }
+    GridEvents.emit("layer:deleted", removed);
+    return true;
+  }
+
+  function reorderLayers(orderedIds) {
+    if (!_layers || !orderedIds) return false;
+    var map = {};
+    _layers.forEach(function (l) { map[l.id] = l; });
+    var reordered = [];
+    orderedIds.forEach(function (id) {
+      if (map[id]) reordered.push(map[id]);
+    });
+    // Append any layers not mentioned (safety)
+    _layers.forEach(function (l) {
+      if (reordered.indexOf(l) === -1) reordered.push(l);
+    });
+    _layers = reordered;
+    GridEvents.emit("layer:reordered", _layers);
+    return true;
+  }
+
   function getAllLayersLayout() {
     if (!_layers) return null;
     // Save current tables first so the snapshot is up-to-date
@@ -597,6 +633,8 @@ var GridCore = (function () {
     getActiveLayer: getActiveLayer,
     switchLayer: switchLayer,
     addLayer: addLayer,
+    deleteLayer: deleteLayer,
+    reorderLayers: reorderLayers,
     getAllLayersLayout: getAllLayersLayout,
     isEditing: isEditing,
     enterEditMode: enterEditMode,
@@ -1046,6 +1084,21 @@ var GridToolbar = (function () {
       $picker.append($textSection);
     }
 
+    // Delete layer section (only if more than 1 layer)
+    var layers = GridCore.getLayers();
+    if (layers.length > 1) {
+      var $deleteSection = jQuery("<div>").addClass("tl-icon-picker-delete-section");
+      var $deleteBtn = jQuery("<button>")
+        .addClass("tl-icon-picker-delete-btn")
+        .html('<i class="fa-solid fa-trash-can"></i> Delete Layout')
+        .on("click", function () {
+          _closeIconPicker();
+          _confirmDeleteLayer(layer);
+        });
+      $deleteSection.append($deleteBtn);
+      $picker.append($deleteSection);
+    }
+
     // Position relative to icon badge
     _$layoutIcon.addClass("tl-toolbar-icon-badge--picker-open");
     var $left = _$layoutIcon.closest(".tl-toolbar-left");
@@ -1055,6 +1108,43 @@ var GridToolbar = (function () {
 
     // Animate in
     setTimeout(function () { $picker.addClass("tl-icon-picker--open"); }, 10);
+  }
+
+  function _confirmDeleteLayer(layer) {
+    var cfg = GridCore.getConfig();
+    var $overlay = jQuery("<div>").addClass("tl-overlay");
+    var $modal = jQuery("<div>").addClass("tl-modal");
+    $modal.append(
+      jQuery("<h2>").html('<i class="fa-solid fa-triangle-exclamation"></i> Delete Layout')
+    );
+    $modal.append(
+      jQuery("<p>").addClass("tl-modal-text").text(
+        'Are you sure you want to delete "' + layer.label + '"? This action cannot be undone.'
+      )
+    );
+    var $actions = jQuery("<div>").addClass("tl-modal-actions");
+    var $cancel = jQuery("<button>").addClass("tl-btn tl-btn-cancel").text("Cancel")
+      .on("click", function () { $overlay.remove(); });
+    var $confirm = jQuery("<button>").addClass("tl-btn tl-btn-danger").text("Delete")
+      .on("click", function () {
+        $overlay.remove();
+        var wasActive = (layer.id === GridCore.getActiveLayerId());
+        GridCore.deleteLayer(layer.id);
+        if (wasActive) {
+          jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+        }
+        // Refresh toolbar display
+        var active = GridCore.getActiveLayer();
+        _refreshLayerDisplay(active);
+        GridEvents.emit("layer:switched", active);
+        if (typeof cfg.onLayerChange === "function")
+          cfg.onLayerChange(active, GridCore.getLayout());
+      });
+    $actions.append($cancel, $confirm);
+    $modal.append($actions);
+    $overlay.append($modal);
+    jQuery(".tl-root").first().append($overlay);
+    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
 
   function _selectIcon(layer, value) {
@@ -1732,11 +1822,15 @@ var GridLayers = (function () {
     _$wrap.append($btn);
     _$wrap.append($panel);
 
-    // Re-render panel when layer metadata (name/icon) changes
-    GridEvents.on("layer:updated", function () {
+    // Re-render panel when layers change
+    var _refreshPanel = function () {
       var $p = _$wrap.find(".tl-layers-panel");
       if ($p.length) _renderPanelContent($p);
-    });
+    };
+    GridEvents.on("layer:updated", _refreshPanel);
+    GridEvents.on("layer:deleted", _refreshPanel);
+    GridEvents.on("layer:reordered", _refreshPanel);
+    GridEvents.on("layer:switched", _refreshPanel);
 
     return _$wrap;
   }
@@ -1859,9 +1953,12 @@ var GridLayers = (function () {
   }
 
   function _buildLayerItem(layer, isActive) {
+    var layers = GridCore.getLayers();
+    var cfg = GridCore.getConfig();
+
     var $item = jQuery("<div>")
       .addClass("tl-layers-item" + (isActive ? " tl-layers-item--active" : ""))
-      .attr("title", layer.label)
+      .attr({ "title": layer.label, "data-layer-id": layer.id, "draggable": "true" })
       .on("mouseenter", function () {
         clearTimeout(_hoverTimer);
         _hoverTimer = setTimeout(function () { _showPreview(layer); }, 500);
@@ -1870,18 +1967,54 @@ var GridLayers = (function () {
         clearTimeout(_hoverTimer);
         _hidePreview();
       })
-      .on("click", function () {
+      .on("click", function (e) {
         if (isActive) return;
-        var cfg = GridCore.getConfig();
         if (cfg.editMode !== false && GridCore.isEditing()) return;
         GridCore.switchLayer(layer.id);
         _rebuildGrid();
         var $panel = _$wrap.find(".tl-layers-panel");
         _renderPanelContent($panel);
-        var cfg = GridCore.getConfig();
         if (typeof cfg.onLayerChange === "function")
           cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
       });
+
+    // Drag-to-reorder events
+    $item.on("dragstart", function (e) {
+      if (cfg.editMode !== false && GridCore.isEditing()) { e.preventDefault(); return; }
+      e.originalEvent.dataTransfer.effectAllowed = "move";
+      e.originalEvent.dataTransfer.setData("text/plain", layer.id);
+      $item.addClass("tl-layers-item--dragging");
+    });
+    $item.on("dragend", function () {
+      $item.removeClass("tl-layers-item--dragging");
+      _$wrap.find(".tl-layers-item--drag-over").removeClass("tl-layers-item--drag-over");
+    });
+    $item.on("dragover", function (e) {
+      e.preventDefault();
+      e.originalEvent.dataTransfer.dropEffect = "move";
+      $item.addClass("tl-layers-item--drag-over");
+    });
+    $item.on("dragleave", function () {
+      $item.removeClass("tl-layers-item--drag-over");
+    });
+    $item.on("drop", function (e) {
+      e.preventDefault();
+      $item.removeClass("tl-layers-item--drag-over");
+      var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
+      if (draggedId === layer.id) return;
+      // Build new order
+      var currentIds = layers.map(function (l) { return l.id; });
+      var fromIdx = currentIds.indexOf(draggedId);
+      var toIdx = currentIds.indexOf(layer.id);
+      if (fromIdx === -1 || toIdx === -1) return;
+      currentIds.splice(fromIdx, 1);
+      currentIds.splice(toIdx, 0, draggedId);
+      GridCore.reorderLayers(currentIds);
+      var $panel = _$wrap.find(".tl-layers-panel");
+      _renderPanelContent($panel);
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+    });
 
     var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;
     var $icon = jQuery("<div>").addClass("tl-layers-icon");
@@ -2161,6 +2294,16 @@ var TableLayout = (function () {
       if (typeof cfg.onLayerChange === "function")
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
+    GridEvents.on("layer:deleted", function (removed) {
+      if (typeof cfg.onLayerDelete === "function")
+        cfg.onLayerDelete(removed);
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+    });
+    GridEvents.on("layer:reordered", function (layers) {
+      if (typeof cfg.onLayerReorder === "function")
+        cfg.onLayerReorder(layers);
+    });
 
     // ── Return instance API ────────────────────────
     return {
@@ -2214,6 +2357,12 @@ var TableLayout = (function () {
         };
         GridCore.addLayer(layer);
         return layer;
+      },
+      deleteLayer: function (id) {
+        return GridCore.deleteLayer(id);
+      },
+      reorderLayers: function (orderedIds) {
+        return GridCore.reorderLayers(orderedIds);
       },
       getAllLayersLayout: function () {
         return GridCore.getAllLayersLayout();

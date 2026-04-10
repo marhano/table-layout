@@ -241,6 +241,21 @@ var GridToolbar = (function () {
       $picker.append($textSection);
     }
 
+    // Delete layer section (only if more than 1 layer)
+    var layers = GridCore.getLayers();
+    if (layers.length > 1) {
+      var $deleteSection = jQuery("<div>").addClass("tl-icon-picker-delete-section");
+      var $deleteBtn = jQuery("<button>")
+        .addClass("tl-icon-picker-delete-btn")
+        .html('<i class="fa-solid fa-trash-can"></i> Delete Layout')
+        .on("click", function () {
+          _closeIconPicker();
+          _confirmDeleteLayer(layer);
+        });
+      $deleteSection.append($deleteBtn);
+      $picker.append($deleteSection);
+    }
+
     // Position relative to icon badge
     _$layoutIcon.addClass("tl-toolbar-icon-badge--picker-open");
     var $left = _$layoutIcon.closest(".tl-toolbar-left");
@@ -250,6 +265,43 @@ var GridToolbar = (function () {
 
     // Animate in
     setTimeout(function () { $picker.addClass("tl-icon-picker--open"); }, 10);
+  }
+
+  function _confirmDeleteLayer(layer) {
+    var cfg = GridCore.getConfig();
+    var $overlay = jQuery("<div>").addClass("tl-overlay");
+    var $modal = jQuery("<div>").addClass("tl-modal");
+    $modal.append(
+      jQuery("<h2>").html('<i class="fa-solid fa-triangle-exclamation"></i> Delete Layout')
+    );
+    $modal.append(
+      jQuery("<p>").addClass("tl-modal-text").text(
+        'Are you sure you want to delete "' + layer.label + '"? This action cannot be undone.'
+      )
+    );
+    var $actions = jQuery("<div>").addClass("tl-modal-actions");
+    var $cancel = jQuery("<button>").addClass("tl-btn tl-btn-cancel").text("Cancel")
+      .on("click", function () { $overlay.remove(); });
+    var $confirm = jQuery("<button>").addClass("tl-btn tl-btn-danger").text("Delete")
+      .on("click", function () {
+        $overlay.remove();
+        var wasActive = (layer.id === GridCore.getActiveLayerId());
+        GridCore.deleteLayer(layer.id);
+        if (wasActive) {
+          jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+        }
+        // Refresh toolbar display
+        var active = GridCore.getActiveLayer();
+        _refreshLayerDisplay(active);
+        GridEvents.emit("layer:switched", active);
+        if (typeof cfg.onLayerChange === "function")
+          cfg.onLayerChange(active, GridCore.getLayout());
+      });
+    $actions.append($cancel, $confirm);
+    $modal.append($actions);
+    $overlay.append($modal);
+    jQuery(".tl-root").first().append($overlay);
+    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
 
   function _selectIcon(layer, value) {

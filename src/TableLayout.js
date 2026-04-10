@@ -95,6 +95,16 @@ var TableLayout = (function () {
       if (typeof cfg.onLayerChange === "function")
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
+    GridEvents.on("layer:deleted", function (removed) {
+      if (typeof cfg.onLayerDelete === "function")
+        cfg.onLayerDelete(removed);
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+    });
+    GridEvents.on("layer:reordered", function (layers) {
+      if (typeof cfg.onLayerReorder === "function")
+        cfg.onLayerReorder(layers);
+    });
 
     // ── Return instance API ────────────────────────
     return {
@@ -148,6 +158,12 @@ var TableLayout = (function () {
         };
         GridCore.addLayer(layer);
         return layer;
+      },
+      deleteLayer: function (id) {
+        return GridCore.deleteLayer(id);
+      },
+      reorderLayers: function (orderedIds) {
+        return GridCore.reorderLayers(orderedIds);
       },
       getAllLayersLayout: function () {
         return GridCore.getAllLayersLayout();

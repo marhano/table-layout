@@ -296,6 +296,36 @@
     background: var(--tl-primary-dark);
 }
 
+/* Icon picker delete section */
+.tl-icon-picker-delete-section {
+    border-top: 1px solid var(--tl-border);
+    padding-top: 10px;
+    margin-top: 2px;
+}
+
+.tl-icon-picker-delete-btn {
+    width: 100%;
+    border: 1.5px solid #dc2626;
+    border-radius: 7px;
+    padding: 7px 12px;
+    background: transparent;
+    color: #dc2626;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.tl-icon-picker-delete-btn:hover {
+    background: #dc2626;
+    color: #fff;
+}
+
 /* ── Toolbar Buttons ── */
 .tl-toolbar-btn {
     display: inline-flex;
@@ -803,6 +833,18 @@
     color: var(--tl-surface-muted);
 }
 
+.tl-btn-danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.tl-modal-text {
+    font-size: 0.88rem;
+    color: var(--tl-surface-muted);
+    line-height: 1.5;
+    margin: 0 0 8px 0;
+}
+
 /* ── Error ── */
 .tl-error {
     font-size: 0.78rem;
@@ -911,7 +953,8 @@
     justify-content: center;
     cursor: pointer;
     border-radius: 8px;
-    transition: opacity 0.12s;
+    transition: opacity 0.12s, transform 0.15s;
+    position: relative;
 }
 
 .tl-layers-item:hover .tl-layers-icon {
@@ -941,6 +984,15 @@
     background: var(--tl-primary);
     color: #fff;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--tl-primary) 40%, transparent);
+}
+
+/* Drag reorder states */
+.tl-layers-item--dragging {
+    opacity: 0.4;
+}
+
+.tl-layers-item--drag-over .tl-layers-icon {
+    box-shadow: 0 0 0 2px var(--tl-primary);
 }
 
 .tl-layers-separator {

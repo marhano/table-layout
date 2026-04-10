@@ -160,6 +160,8 @@ var GridConfig = (function () {
     onTableCreated: null,
     onCreateTable: null,
     onLayerChange: null,  // fn(layer, tables) — fired when active layer changes
+    onLayerDelete: null,  // fn(removedLayer) — fired when a layer is deleted
+    onLayerReorder: null, // fn(layers) — fired when layers are reordered
     onCreateLayer: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
   };
 

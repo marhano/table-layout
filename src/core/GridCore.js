@@ -131,6 +131,40 @@ var GridCore = (function () {
     GridEvents.emit("layer:added", layer);
   }
 
+  function deleteLayer(id) {
+    if (!_layers || _layers.length <= 1) return false;
+    var idx = _layers.findIndex(function (l) { return l.id === id; });
+    if (idx === -1) return false;
+    var removed = _layers.splice(idx, 1)[0];
+    // If we deleted the active layer, switch to the first remaining one
+    if (_activeLayerId === id) {
+      var next = _layers[Math.min(idx, _layers.length - 1)];
+      _activeLayerId = next.id;
+      _tables = jQuery.extend(true, [], next.tables);
+      _counter = _tables.length + 1;
+      GridEvents.emit("layer:switched", next);
+    }
+    GridEvents.emit("layer:deleted", removed);
+    return true;
+  }
+
+  function reorderLayers(orderedIds) {
+    if (!_layers || !orderedIds) return false;
+    var map = {};
+    _layers.forEach(function (l) { map[l.id] = l; });
+    var reordered = [];
+    orderedIds.forEach(function (id) {
+      if (map[id]) reordered.push(map[id]);
+    });
+    // Append any layers not mentioned (safety)
+    _layers.forEach(function (l) {
+      if (reordered.indexOf(l) === -1) reordered.push(l);
+    });
+    _layers = reordered;
+    GridEvents.emit("layer:reordered", _layers);
+    return true;
+  }
+
   function getAllLayersLayout() {
     if (!_layers) return null;
     // Save current tables first so the snapshot is up-to-date
@@ -314,6 +348,8 @@ var GridCore = (function () {
     getActiveLayer: getActiveLayer,
     switchLayer: switchLayer,
     addLayer: addLayer,
+    deleteLayer: deleteLayer,
+    reorderLayers: reorderLayers,
     getAllLayersLayout: getAllLayersLayout,
     isEditing: isEditing,
     enterEditMode: enterEditMode,

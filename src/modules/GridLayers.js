@@ -33,11 +33,15 @@ var GridLayers = (function () {
     _$wrap.append($btn);
     _$wrap.append($panel);
 
-    // Re-render panel when layer metadata (name/icon) changes
-    GridEvents.on("layer:updated", function () {
+    // Re-render panel when layers change
+    var _refreshPanel = function () {
       var $p = _$wrap.find(".tl-layers-panel");
       if ($p.length) _renderPanelContent($p);
-    });
+    };
+    GridEvents.on("layer:updated", _refreshPanel);
+    GridEvents.on("layer:deleted", _refreshPanel);
+    GridEvents.on("layer:reordered", _refreshPanel);
+    GridEvents.on("layer:switched", _refreshPanel);
 
     return _$wrap;
   }
@@ -160,9 +164,12 @@ var GridLayers = (function () {
   }
 
   function _buildLayerItem(layer, isActive) {
+    var layers = GridCore.getLayers();
+    var cfg = GridCore.getConfig();
+
     var $item = jQuery("<div>")
       .addClass("tl-layers-item" + (isActive ? " tl-layers-item--active" : ""))
-      .attr("title", layer.label)
+      .attr({ "title": layer.label, "data-layer-id": layer.id, "draggable": "true" })
       .on("mouseenter", function () {
         clearTimeout(_hoverTimer);
         _hoverTimer = setTimeout(function () { _showPreview(layer); }, 500);
@@ -171,18 +178,54 @@ var GridLayers = (function () {
         clearTimeout(_hoverTimer);
         _hidePreview();
       })
-      .on("click", function () {
+      .on("click", function (e) {
         if (isActive) return;
-        var cfg = GridCore.getConfig();
         if (cfg.editMode !== false && GridCore.isEditing()) return;
         GridCore.switchLayer(layer.id);
         _rebuildGrid();
         var $panel = _$wrap.find(".tl-layers-panel");
         _renderPanelContent($panel);
-        var cfg = GridCore.getConfig();
         if (typeof cfg.onLayerChange === "function")
           cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
       });
+
+    // Drag-to-reorder events
+    $item.on("dragstart", function (e) {
+      if (cfg.editMode !== false && GridCore.isEditing()) { e.preventDefault(); return; }
+      e.originalEvent.dataTransfer.effectAllowed = "move";
+      e.originalEvent.dataTransfer.setData("text/plain", layer.id);
+      $item.addClass("tl-layers-item--dragging");
+    });
+    $item.on("dragend", function () {
+      $item.removeClass("tl-layers-item--dragging");
+      _$wrap.find(".tl-layers-item--drag-over").removeClass("tl-layers-item--drag-over");
+    });
+    $item.on("dragover", function (e) {
+      e.preventDefault();
+      e.originalEvent.dataTransfer.dropEffect = "move";
+      $item.addClass("tl-layers-item--drag-over");
+    });
+    $item.on("dragleave", function () {
+      $item.removeClass("tl-layers-item--drag-over");
+    });
+    $item.on("drop", function (e) {
+      e.preventDefault();
+      $item.removeClass("tl-layers-item--drag-over");
+      var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
+      if (draggedId === layer.id) return;
+      // Build new order
+      var currentIds = layers.map(function (l) { return l.id; });
+      var fromIdx = currentIds.indexOf(draggedId);
+      var toIdx = currentIds.indexOf(layer.id);
+      if (fromIdx === -1 || toIdx === -1) return;
+      currentIds.splice(fromIdx, 1);
+      currentIds.splice(toIdx, 0, draggedId);
+      GridCore.reorderLayers(currentIds);
+      var $panel = _$wrap.find(".tl-layers-panel");
+      _renderPanelContent($panel);
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+    });
 
     var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;
     var $icon = jQuery("<div>").addClass("tl-layers-icon");
