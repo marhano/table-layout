@@ -122,6 +122,7 @@ var GridConfig = (function () {
     // Layer switcher — set to an array of {id, label, icon, tables} to enable
     // icon can be an FA class string (e.g. "fa-solid fa-utensils") or short text/emoji ("A", "1F")
     layers: null,
+    layerPreview: true,
 
     // Icon picker for layer icons
     // icon types: "fa" (FontAwesome class), "svg" (URL/path to SVG), "img" (URL/path to PNG/JPG/etc.)

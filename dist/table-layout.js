@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-10T05:12:57.909Z
+ * Built: 2026-04-10T05:37:42.226Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -131,6 +131,7 @@ var GridConfig = (function () {
     // Layer switcher — set to an array of {id, label, icon, tables} to enable
     // icon can be an FA class string (e.g. "fa-solid fa-utensils") or short text/emoji ("A", "1F")
     layers: null,
+    layerPreview: true,
 
     // Icon picker for layer icons
     // icon types: "fa" (FontAwesome class), "svg" (URL/path to SVG), "img" (URL/path to PNG/JPG/etc.)
@@ -1949,10 +1950,20 @@ var GridLayers = (function () {
 
   // ── Layer item ────────────────────────────────────
 
-  function _showPreview(layer) {
+  function _showPreview(layer, $item) {
+    var cfg = GridCore.getConfig();
+    if (cfg.layerPreview === false) return;
     _hidePreview();
     _$activePreview = _buildLayerPreview(layer);
     _$wrap.append(_$activePreview);
+
+    // Position relative to the hovered item within _$wrap
+    var wrapOffset = _$wrap.offset();
+    var itemOffset = $item.offset();
+    var itemH = $item.outerHeight();
+    var topPos = itemOffset.top - wrapOffset.top + itemH / 2;
+    _$activePreview.css({ top: topPos + "px" });
+
     setTimeout(function () {
       if (_$activePreview) _$activePreview.addClass("tl-layer-preview-popup--visible");
     }, 10);
@@ -1970,52 +1981,82 @@ var GridLayers = (function () {
     var tables = layer.id === GridCore.getActiveLayerId()
       ? GridCore.getTables()
       : (layer.tables || []);
-    var cellSize = 4;
-    var gap = 1;
     var cols = cfg.columns;
     var rows = cfg.rows;
 
-    var $popup = jQuery("<div>").addClass("tl-layer-preview-popup");
-    $popup.append(
-      jQuery("<div>").addClass("tl-layer-preview-label").text(layer.label)
-    );
-
-    var $isoWrap = jQuery("<div>").addClass("tl-layer-preview-iso");
-    var $gridWrap = jQuery("<div>").addClass("tl-layer-preview-grid-wrap");
-    var $grid = jQuery("<div>").addClass("tl-layer-preview-grid").css({
-      "grid-template-columns": "repeat(" + cols + ", " + cellSize + "px)",
-      "grid-template-rows":    "repeat(" + rows + ", " + cellSize + "px)",
-      "gap": gap + "px",
-      "width":  (cols * cellSize + (cols - 1) * gap) + "px",
-      "height": (rows * cellSize + (rows - 1) * gap) + "px",
+    // Compute bounding box of all tables
+    var minC = cols + 1, minR = rows + 1, maxC = 0, maxR = 0;
+    jQuery.each(tables, function (_, t) {
+      if (t.col < minC) minC = t.col;
+      if (t.row < minR) minR = t.row;
+      var endC = t.col + t.colSpan - 1;
+      var endR = t.row + t.rowSpan - 1;
+      if (endC > maxC) maxC = endC;
+      if (endR > maxR) maxR = endR;
     });
 
-    for (var r = 1; r <= rows; r++) {
-      for (var c = 1; c <= cols; c++) {
+    // If no tables, show full grid
+    if (tables.length === 0) {
+      minC = 1; minR = 1; maxC = cols; maxR = rows;
+    }
+
+    // Add 1-cell padding around content, clamped to grid bounds
+    minC = Math.max(1, minC - 1);
+    minR = Math.max(1, minR - 1);
+    maxC = Math.min(cols, maxC + 1);
+    maxR = Math.min(rows, maxR + 1);
+
+    var cropCols = maxC - minC + 1;
+    var cropRows = maxR - minR + 1;
+
+    // Target size: fit within a max preview box
+    var maxPreviewW = 120;
+    var maxPreviewH = 90;
+    var gap = 1;
+
+    // Compute cell size to fit
+    var cellW = Math.floor((maxPreviewW - (cropCols - 1) * gap) / cropCols);
+    var cellH = Math.floor((maxPreviewH - (cropRows - 1) * gap) / cropRows);
+    var cellSize = Math.max(2, Math.min(cellW, cellH));
+
+    var gridW = cropCols * cellSize + (cropCols - 1) * gap;
+    var gridH = cropRows * cellSize + (cropRows - 1) * gap;
+
+    var $popup = jQuery("<div>").addClass("tl-layer-preview-popup");
+
+    var $grid = jQuery("<div>").addClass("tl-layer-preview-grid").css({
+      "grid-template-columns": "repeat(" + cropCols + ", " + cellSize + "px)",
+      "grid-template-rows":    "repeat(" + cropRows + ", " + cellSize + "px)",
+      "gap": gap + "px",
+      "width":  gridW + "px",
+      "height": gridH + "px",
+    });
+
+    // Background cells
+    for (var r = 0; r < cropRows; r++) {
+      for (var c = 0; c < cropCols; c++) {
         $grid.append(
           jQuery("<div>").addClass("tl-layer-preview-cell").css({
-            "grid-column": c + " / span 1",
-            "grid-row":    r + " / span 1",
+            "grid-column": (c + 1) + " / span 1",
+            "grid-row":    (r + 1) + " / span 1",
           })
         );
       }
     }
 
+    // Table blocks — offset to cropped coordinates
     jQuery.each(tables, function (_, t) {
       var statusColor = cfg.statusColors[t.status] || "#6b7280";
       $grid.append(
         jQuery("<div>").addClass("tl-layer-preview-table").css({
-          "grid-column": t.col + " / span " + t.colSpan,
-          "grid-row":    t.row + " / span " + t.rowSpan,
+          "grid-column": (t.col - minC + 1) + " / span " + t.colSpan,
+          "grid-row":    (t.row - minR + 1) + " / span " + t.rowSpan,
           "background":  statusColor,
         })
       );
     });
 
-    $gridWrap.append($grid);
-    $isoWrap.append($gridWrap);
-    $popup.append($isoWrap);
-
+    $popup.append($grid);
     return $popup;
   }
 
@@ -2027,8 +2068,9 @@ var GridLayers = (function () {
       .addClass("tl-layers-item" + (isActive ? " tl-layers-item--active" : ""))
       .attr({ "title": layer.label, "data-layer-id": layer.id, "draggable": "true" })
       .on("mouseenter", function () {
+        var self = this;
         clearTimeout(_hoverTimer);
-        _hoverTimer = setTimeout(function () { _showPreview(layer); }, 500);
+        _hoverTimer = setTimeout(function () { _showPreview(layer, jQuery(self)); }, 500);
       })
       .on("mouseleave", function () {
         clearTimeout(_hoverTimer);

@@ -1084,20 +1084,19 @@
     border-color: var(--tl-danger) !important;
 }
 
-/* ── Layer Preview Popup (isometric hover) ── */
+/* -- Layer Preview Popup -- */
 .tl-layer-preview-popup {
     position: absolute;
-    right: calc(100% + 12px);
-    top: 0;
-    padding: 12px 14px 14px;
+    right: calc(100% + 10px);
+    padding: 8px;
     background: rgba(255, 255, 255, 0.97);
-    border-radius: 14px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     pointer-events: none;
     opacity: 0;
-    transform: translateX(8px);
+    transform: translateY(-50%) translateX(6px);
     transition: opacity 0.2s ease, transform 0.2s ease;
     z-index: 30;
     overflow: visible;
@@ -1106,31 +1105,7 @@
 
 .tl-layer-preview-popup--visible {
     opacity: 1;
-    transform: translateX(0);
-}
-
-.tl-layer-preview-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--tl-surface-alt);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-.tl-layer-preview-iso {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 72px;
-    overflow: visible;
-}
-
-.tl-layer-preview-grid-wrap {
-    display: inline-block;
-    transform: rotateX(55deg) rotateZ(-45deg);
-    transform-origin: center center;
+    transform: translateY(-50%) translateX(0);
 }
 
 .tl-layer-preview-grid {
