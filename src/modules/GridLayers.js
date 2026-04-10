@@ -167,6 +167,7 @@ var GridLayers = (function () {
 
     var $popup = jQuery("<div>").addClass("tl-layer-preview-popup");
 
+    var $iso = jQuery("<div>").addClass("tl-layer-preview-iso");
     var $grid = jQuery("<div>").addClass("tl-layer-preview-grid").css({
       "grid-template-columns": "repeat(" + cropCols + ", " + cellSize + "px)",
       "grid-template-rows":    "repeat(" + cropRows + ", " + cellSize + "px)",
@@ -188,18 +189,20 @@ var GridLayers = (function () {
     }
 
     // Table blocks — offset to cropped coordinates
+    var cubeH = Math.max(2, Math.round(cellSize * 0.4));
     jQuery.each(tables, function (_, t) {
       var statusColor = cfg.statusColors[t.status] || "#6b7280";
-      $grid.append(
-        jQuery("<div>").addClass("tl-layer-preview-table").css({
-          "grid-column": (t.col - minC + 1) + " / span " + t.colSpan,
-          "grid-row":    (t.row - minR + 1) + " / span " + t.rowSpan,
-          "background":  statusColor,
-        })
-      );
+      var $tbl = jQuery("<div>").addClass("tl-layer-preview-table").css({
+        "grid-column": (t.col - minC + 1) + " / span " + t.colSpan,
+        "grid-row":    (t.row - minR + 1) + " / span " + t.rowSpan,
+      });
+      $tbl[0].style.setProperty("--tl-prev-color", statusColor);
+      $tbl[0].style.setProperty("--tl-prev-h", cubeH + "px");
+      $grid.append($tbl);
     });
 
-    $popup.append($grid);
+    $iso.append($grid);
+    $popup.append($iso);
     return $popup;
   }
 

@@ -1087,13 +1087,13 @@
 /* -- Layer Preview Popup -- */
 .tl-layer-preview-popup {
     position: absolute;
-    right: calc(100% + 10px);
-    padding: 8px;
+    right: calc(100% + 14px);
+    padding: 10px 12px;
     background: rgba(255, 255, 255, 0.97);
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     pointer-events: none;
     opacity: 0;
     transform: translateY(-50%) translateX(6px);
@@ -1108,24 +1108,64 @@
     transform: translateY(-50%) translateX(0);
 }
 
+.tl-layer-preview-iso {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 300px;
+}
+
 .tl-layer-preview-grid {
     display: grid;
     position: relative;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 2px;
+    background: #f0f2f5;
+    border: 1px solid #dde1e8;
+    border-radius: 3px;
+    transform: rotateX(55deg) rotateZ(-45deg);
+    transform-style: preserve-3d;
+    transform-origin: center center;
 }
 
 .tl-layer-preview-cell {
-    background: #f1f5f9;
-    border: 0.5px solid #dde3ea;
+    background: #f5f7fa;
+    border: 0.5px solid #e0e4ea;
 }
 
 .tl-layer-preview-table {
     position: relative;
     z-index: 1;
     border-radius: 1px;
-    opacity: 0.88;
+    background: var(--tl-prev-color);
+    transform: translateZ(var(--tl-prev-h));
+    transform-style: preserve-3d;
+}
+
+/* Right face — folds down from right edge of top into -Z */
+.tl-layer-preview-table::before {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: 0;
+    width: var(--tl-prev-h);
+    height: 100%;
+    background: var(--tl-prev-color);
+    filter: brightness(0.72);
+    transform-origin: 0 0;
+    transform: rotateY(90deg);
+}
+
+/* Bottom face — folds down from bottom edge of top into -Z */
+.tl-layer-preview-table::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 100%;
+    width: 100%;
+    height: var(--tl-prev-h);
+    background: var(--tl-prev-color);
+    filter: brightness(0.52);
+    transform-origin: 0 0;
+    transform: rotateX(-90deg);
 }
 
 /* ─────────────────────────────────────────────────────────────
