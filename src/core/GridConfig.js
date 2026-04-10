@@ -129,7 +129,7 @@ var GridConfig = (function () {
     onTableCreated: null,
     onCreateTable: null,
     onLayerChange: null,  // fn(layer, tables) — fired when active layer changes
-    onLayerAdd: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
+    onCreateLayer: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
   };
 
   /**

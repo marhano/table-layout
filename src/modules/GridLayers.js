@@ -198,8 +198,10 @@ var GridLayers = (function () {
       .addClass("tl-layers-add-submit")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
-        if (typeof cfg.onLayerAdd === "function") {
-          cfg.onLayerAdd(function (details) { _createLayer(details, $panel); });
+        if (typeof cfg.onCreateLayer === "function") {
+          cfg.onCreateLayer(function (details) {
+            _createLayer(details, $panel);
+          });
           return;
         }
         _openAddModal($panel);
