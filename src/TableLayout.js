@@ -91,6 +91,10 @@ var TableLayout = (function () {
       if (typeof cfg.onLayerChange === "function")
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
+    GridEvents.on("layer:updated", function (layer) {
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(layer, GridCore.getLayout());
+    });
 
     // ── Return instance API ────────────────────────
     return {

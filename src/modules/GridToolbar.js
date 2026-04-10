@@ -124,6 +124,9 @@ var GridToolbar = (function () {
       var val = jQuery.trim($input.val());
       if (val && val !== layer.label) {
         GridCore.updateLayerMeta(layer.id, { label: val });
+        var c = GridCore.getConfig();
+        if (typeof c.onLayerChange === "function")
+          c.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
       }
       var updatedLayer = GridCore.getActiveLayer();
       var $span = jQuery("<span>")
@@ -251,6 +254,9 @@ var GridToolbar = (function () {
 
   function _selectIcon(layer, value) {
     GridCore.updateLayerMeta(layer.id, { icon: value });
+    var cfg = GridCore.getConfig();
+    if (typeof cfg.onLayerChange === "function")
+      cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
     var updated = GridCore.getActiveLayer();
     _$layoutIcon.find(".tl-icon-picker").detach();
     _renderIconContent(_$layoutIcon, updated.icon, updated.label);

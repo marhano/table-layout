@@ -33,6 +33,12 @@ var GridLayers = (function () {
     _$wrap.append($btn);
     _$wrap.append($panel);
 
+    // Re-render panel when layer metadata (name/icon) changes
+    GridEvents.on("layer:updated", function () {
+      var $p = _$wrap.find(".tl-layers-panel");
+      if ($p.length) _renderPanelContent($p);
+    });
+
     return _$wrap;
   }
 

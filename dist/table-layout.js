@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-10T02:49:01.357Z
+ * Built: 2026-04-10T02:55:47.598Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -929,6 +929,9 @@ var GridToolbar = (function () {
       var val = jQuery.trim($input.val());
       if (val && val !== layer.label) {
         GridCore.updateLayerMeta(layer.id, { label: val });
+        var c = GridCore.getConfig();
+        if (typeof c.onLayerChange === "function")
+          c.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
       }
       var updatedLayer = GridCore.getActiveLayer();
       var $span = jQuery("<span>")
@@ -1056,6 +1059,9 @@ var GridToolbar = (function () {
 
   function _selectIcon(layer, value) {
     GridCore.updateLayerMeta(layer.id, { icon: value });
+    var cfg = GridCore.getConfig();
+    if (typeof cfg.onLayerChange === "function")
+      cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
     var updated = GridCore.getActiveLayer();
     _$layoutIcon.find(".tl-icon-picker").detach();
     _renderIconContent(_$layoutIcon, updated.icon, updated.label);
@@ -1726,6 +1732,12 @@ var GridLayers = (function () {
     _$wrap.append($btn);
     _$wrap.append($panel);
 
+    // Re-render panel when layer metadata (name/icon) changes
+    GridEvents.on("layer:updated", function () {
+      var $p = _$wrap.find(".tl-layers-panel");
+      if ($p.length) _renderPanelContent($p);
+    });
+
     return _$wrap;
   }
 
@@ -2142,6 +2154,10 @@ var TableLayout = (function () {
       if (typeof cfg.onZoom === "function") cfg.onZoom(level);
     });
     GridEvents.on("layer:switched", function (layer) {
+      if (typeof cfg.onLayerChange === "function")
+        cfg.onLayerChange(layer, GridCore.getLayout());
+    });
+    GridEvents.on("layer:updated", function (layer) {
       if (typeof cfg.onLayerChange === "function")
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
