@@ -123,6 +123,36 @@ var GridConfig = (function () {
     // icon can be an FA class string (e.g. "fa-solid fa-utensils") or short text/emoji ("A", "1F")
     layers: null,
 
+    // Icon picker for layer icons
+    // icon types: "fa" (FontAwesome class), "svg" (URL/path to SVG), "img" (URL/path to PNG/JPG/etc.)
+    iconPicker: {
+      maxTextLength: 4,         // max chars when using text as icon
+      allowText: true,          // allow plain-text icons
+      icons: [
+        // FontAwesome icons
+        { type: "fa", value: "fa-solid fa-utensils",      label: "Utensils" },
+        { type: "fa", value: "fa-solid fa-mug-saucer",    label: "Coffee" },
+        { type: "fa", value: "fa-solid fa-champagne-glasses", label: "Bar" },
+        { type: "fa", value: "fa-solid fa-couch",         label: "Lounge" },
+        { type: "fa", value: "fa-solid fa-umbrella-beach", label: "Patio" },
+        { type: "fa", value: "fa-solid fa-music",         label: "Music" },
+        { type: "fa", value: "fa-solid fa-star",          label: "Star" },
+        { type: "fa", value: "fa-solid fa-heart",         label: "Heart" },
+        { type: "fa", value: "fa-solid fa-fire",          label: "Fire" },
+        { type: "fa", value: "fa-solid fa-bolt",          label: "Bolt" },
+        { type: "fa", value: "fa-solid fa-leaf",          label: "Leaf" },
+        { type: "fa", value: "fa-solid fa-cake-candles",  label: "Party" },
+        { type: "fa", value: "fa-solid fa-bell-concierge", label: "Service" },
+        { type: "fa", value: "fa-solid fa-wine-glass",    label: "Wine" },
+        { type: "fa", value: "fa-solid fa-burger",        label: "Burger" },
+        { type: "fa", value: "fa-solid fa-pizza-slice",   label: "Pizza" },
+        // SVG example (user provides path):
+        // { type: "svg", value: "/icons/custom.svg", label: "Custom" },
+        // Image example (user provides path):
+        // { type: "img", value: "/icons/logo.png", label: "Logo" },
+      ],
+    },
+
     // Callbacks — user overrides these
     onSwap: null,
     onLayoutChange: null,

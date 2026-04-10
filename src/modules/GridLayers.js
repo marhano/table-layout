@@ -182,6 +182,8 @@ var GridLayers = (function () {
     var $icon = jQuery("<div>").addClass("tl-layers-icon");
     if (isFaIcon) {
       $icon.append(jQuery("<i>").addClass(layer.icon));
+    } else if (layer.icon && /\.(svg|png|jpe?g|gif|webp)/i.test(layer.icon)) {
+      $icon.append(jQuery("<img>").attr("src", layer.icon).css({ width: "18px", height: "18px", "object-fit": "contain" }));
     } else {
       $icon.text(layer.icon || "?");
     }

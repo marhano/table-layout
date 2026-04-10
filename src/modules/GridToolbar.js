@@ -3,6 +3,8 @@ var GridToolbar = (function () {
   var _$layoutName = null;
   var _$layoutIcon = null;
   var _$editSection = null;
+  var _nameEditing = false;
+  var _$iconPicker = null;
 
   // ── Toolbar build ─────────────────────────────────
 
@@ -17,11 +19,16 @@ var GridToolbar = (function () {
       var activeLayer = GridCore.getActiveLayer();
 
       _$layoutIcon = _buildIconBadge(activeLayer);
+      _$layoutIcon.on("click", function (e) {
+        e.stopPropagation();
+        _toggleIconPicker();
+      });
       $left.append(_$layoutIcon);
 
       _$layoutName = jQuery("<span>")
         .addClass("tl-toolbar-layout-name")
-        .text(activeLayer ? activeLayer.label : "");
+        .text(activeLayer ? activeLayer.label : "")
+        .on("click", function () { _startNameEdit(); });
       $left.append(_$layoutName);
 
       GridEvents.on("layer:switched", function (layer) {
@@ -39,6 +46,13 @@ var GridToolbar = (function () {
       $toolbar.append(_$editSection);
     }
 
+    // Close icon picker on outside click
+    jQuery(document).on("mousedown.tl-iconpicker", function (e) {
+      if (_$iconPicker && !jQuery(e.target).closest(".tl-icon-picker, .tl-toolbar-icon-badge").length) {
+        _closeIconPicker();
+      }
+    });
+
     return $toolbar;
   }
 
@@ -47,28 +61,208 @@ var GridToolbar = (function () {
   function _buildIconBadge(layer) {
     var $badge = jQuery("<div>").addClass("tl-toolbar-icon-badge");
     if (layer) {
-      var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;
-      if (isFaIcon) {
-        $badge.append(jQuery("<i>").addClass(layer.icon));
-      } else {
-        $badge.text(layer.icon || (layer.label ? layer.label.charAt(0).toUpperCase() : "?"));
-      }
+      _renderIconContent($badge, layer.icon, layer.label);
     }
     return $badge;
   }
 
+  function _renderIconContent($el, iconValue, label) {
+    $el.empty();
+    if (!iconValue) {
+      $el.text(label ? label.charAt(0).toUpperCase() : "?");
+      return;
+    }
+    // FA icon
+    if (iconValue.indexOf("fa-") !== -1) {
+      $el.append(jQuery("<i>").addClass(iconValue));
+      return;
+    }
+    // SVG / image file path
+    var lower = iconValue.toLowerCase();
+    if (lower.indexOf(".svg") !== -1 || lower.indexOf(".png") !== -1 ||
+        lower.indexOf(".jpg") !== -1 || lower.indexOf(".jpeg") !== -1 ||
+        lower.indexOf(".gif") !== -1 || lower.indexOf(".webp") !== -1) {
+      $el.append(jQuery("<img>").attr("src", iconValue).addClass("tl-toolbar-icon-img"));
+      return;
+    }
+    // Plain text
+    $el.text(iconValue);
+  }
+
   function _refreshLayerDisplay(layer) {
-    if (_$layoutName && !_$layoutName.is("input")) {
+    if (_$layoutName && !_nameEditing) {
       _$layoutName.text(layer ? layer.label : "");
     }
-    if (_$layoutIcon && !_$layoutIcon.is("input")) {
-      var $new = _buildIconBadge(layer);
-      _$layoutIcon.replaceWith($new);
-      _$layoutIcon = $new;
+    if (_$layoutIcon) {
+      _$layoutIcon.empty();
+      if (layer) _renderIconContent(_$layoutIcon, layer.icon, layer.label);
     }
   }
 
-  // ── Edit controls ─────────────────────────────────
+  // ── Inline name editing (click to edit) ───────────
+
+  function _startNameEdit() {
+    var cfg = GridCore.getConfig();
+    if (!cfg.layers || !cfg.layers.length) return;
+    if (_nameEditing) return;
+    var layer = GridCore.getActiveLayer();
+    if (!layer) return;
+
+    _nameEditing = true;
+    var $input = jQuery("<input>")
+      .addClass("tl-toolbar-layout-name-input")
+      .attr({ type: "text", maxlength: 30, placeholder: "Layer name" })
+      .val(layer.label);
+
+    _$layoutName.replaceWith($input);
+    _$layoutName = $input;
+    $input.trigger("focus").trigger("select");
+
+    function commit() {
+      if (!_nameEditing) return;
+      _nameEditing = false;
+      var val = jQuery.trim($input.val());
+      if (val && val !== layer.label) {
+        GridCore.updateLayerMeta(layer.id, { label: val });
+      }
+      var updatedLayer = GridCore.getActiveLayer();
+      var $span = jQuery("<span>")
+        .addClass("tl-toolbar-layout-name")
+        .text(updatedLayer ? updatedLayer.label : "")
+        .on("click", function () { _startNameEdit(); });
+      $input.replaceWith($span);
+      _$layoutName = $span;
+    }
+
+    $input.on("blur", commit);
+    $input.on("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); $input.trigger("blur"); }
+      if (e.key === "Escape") {
+        _nameEditing = false;
+        var $span = jQuery("<span>")
+          .addClass("tl-toolbar-layout-name")
+          .text(layer.label)
+          .on("click", function () { _startNameEdit(); });
+        $input.replaceWith($span);
+        _$layoutName = $span;
+      }
+    });
+  }
+
+  // ── Icon picker popup ─────────────────────────────
+
+  function _toggleIconPicker() {
+    if (_$iconPicker) {
+      _closeIconPicker();
+    } else {
+      _openIconPicker();
+    }
+  }
+
+  function _closeIconPicker() {
+    if (_$iconPicker) {
+      _$iconPicker.remove();
+      _$iconPicker = null;
+    }
+    if (_$layoutIcon) _$layoutIcon.removeClass("tl-toolbar-icon-badge--picker-open");
+  }
+
+  function _openIconPicker() {
+    var cfg = GridCore.getConfig();
+    if (!cfg.layers || !cfg.layers.length) return;
+    var layer = GridCore.getActiveLayer();
+    if (!layer) return;
+    var pickerCfg = cfg.iconPicker || {};
+    var icons = pickerCfg.icons || [];
+    var maxText = pickerCfg.maxTextLength || 4;
+    var allowText = pickerCfg.allowText !== false;
+
+    _closeIconPicker();
+
+    var $picker = jQuery("<div>").addClass("tl-icon-picker");
+
+    // Header
+    $picker.append(jQuery("<div>").addClass("tl-icon-picker-header").text("Choose Icon"));
+
+    // Icon grid
+    if (icons.length) {
+      var $grid = jQuery("<div>").addClass("tl-icon-picker-grid");
+      jQuery.each(icons, function (_, ico) {
+        var $btn = jQuery("<button>")
+          .addClass("tl-icon-picker-btn")
+          .attr("title", ico.label || "")
+          .on("click", function () {
+            _selectIcon(layer, ico.value);
+          });
+
+        if (ico.type === "fa") {
+          $btn.append(jQuery("<i>").addClass(ico.value));
+        } else if (ico.type === "svg" || ico.type === "img") {
+          $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img"));
+        } else {
+          $btn.text(ico.value);
+        }
+
+        // Mark current
+        if (layer.icon === ico.value) $btn.addClass("tl-icon-picker-btn--active");
+
+        $grid.append($btn);
+      });
+      $picker.append($grid);
+    }
+
+    // Text input section
+    if (allowText) {
+      var $textSection = jQuery("<div>").addClass("tl-icon-picker-text-section");
+      $textSection.append(jQuery("<span>").addClass("tl-icon-picker-text-label").text("Or type text:"));
+      var $row = jQuery("<div>").addClass("tl-icon-picker-text-row");
+      var $textInput = jQuery("<input>")
+        .addClass("tl-icon-picker-text-input")
+        .attr({ type: "text", maxlength: maxText, placeholder: "A, 1F…" })
+        .val(
+          layer.icon && layer.icon.indexOf("fa-") === -1 &&
+          layer.icon.indexOf(".") === -1 ? layer.icon : ""
+        );
+      var $applyBtn = jQuery("<button>")
+        .addClass("tl-icon-picker-apply")
+        .text("Apply")
+        .on("click", function () {
+          var v = jQuery.trim($textInput.val());
+          if (v) _selectIcon(layer, v);
+        });
+      $textInput.on("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); $applyBtn.trigger("click"); }
+      });
+      $row.append($textInput, $applyBtn);
+      $textSection.append($row);
+      $picker.append($textSection);
+    }
+
+    // Position relative to icon badge
+    _$layoutIcon.addClass("tl-toolbar-icon-badge--picker-open");
+    var $left = _$layoutIcon.closest(".tl-toolbar-left");
+    $left.css("position", "relative");
+    $left.append($picker);
+    _$iconPicker = $picker;
+
+    // Animate in
+    setTimeout(function () { $picker.addClass("tl-icon-picker--open"); }, 10);
+  }
+
+  function _selectIcon(layer, value) {
+    GridCore.updateLayerMeta(layer.id, { icon: value });
+    var updated = GridCore.getActiveLayer();
+    _$layoutIcon.find(".tl-icon-picker").detach();
+    _renderIconContent(_$layoutIcon, updated.icon, updated.label);
+    _closeIconPicker();
+    // Re-attach click handler since we cleared content
+    _$layoutIcon.off("click").on("click", function (e) {
+      e.stopPropagation();
+      _toggleIconPicker();
+    });
+  }
+
+  // ── Edit controls (editMode only) ─────────────────
 
   function _renderEditControls() {
     if (!_$editSection) return;
@@ -101,17 +295,14 @@ var GridToolbar = (function () {
   function _handleEdit() {
     GridCore.enterEditMode();
     _renderEditControls();
-    _enableEditableLayerInfo();
     jQuery(".tl-root").removeClass("tl-view-mode").addClass("tl-edit-mode");
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
   }
 
   function _handleSave() {
     deactivate();
-    _commitEditableLayerInfo();
     GridCore.saveEdit();
     _renderEditControls();
-    _disableEditableLayerInfo();
     jQuery(".tl-root").removeClass("tl-edit-mode").addClass("tl-view-mode");
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
     var cfg = GridCore.getConfig();
@@ -122,78 +313,10 @@ var GridToolbar = (function () {
     deactivate();
     GridCore.discardEdit();
     _renderEditControls();
-    _disableEditableLayerInfo();
     var layer = GridCore.getActiveLayer();
     _refreshLayerDisplay(layer);
     jQuery(".tl-root").removeClass("tl-edit-mode").addClass("tl-view-mode");
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
-  }
-
-  // ── Editable layer info ───────────────────────────
-
-  function _enableEditableLayerInfo() {
-    var cfg = GridCore.getConfig();
-    if (!cfg.layers || !cfg.layers.length) return;
-    var layer = GridCore.getActiveLayer();
-    if (!layer) return;
-
-    if (_$layoutName) {
-      var $nameInput = jQuery("<input>")
-        .addClass("tl-toolbar-layout-name-input")
-        .attr({ type: "text", maxlength: 30, placeholder: "Layer name" })
-        .val(layer.label);
-      _$layoutName.replaceWith($nameInput);
-      _$layoutName = $nameInput;
-    }
-
-    if (_$layoutIcon) {
-      var $iconInput = jQuery("<input>")
-        .addClass("tl-toolbar-icon-input")
-        .attr({ type: "text", maxlength: 40, placeholder: "Icon class or emoji" })
-        .val(layer.icon || "");
-      _$layoutIcon.replaceWith($iconInput);
-      _$layoutIcon = $iconInput;
-    }
-  }
-
-  function _disableEditableLayerInfo() {
-    var cfg = GridCore.getConfig();
-    if (!cfg.layers || !cfg.layers.length) return;
-    var layer = GridCore.getActiveLayer();
-
-    if (_$layoutName && _$layoutName.is("input")) {
-      var $name = jQuery("<span>")
-        .addClass("tl-toolbar-layout-name")
-        .text(layer ? layer.label : "");
-      _$layoutName.replaceWith($name);
-      _$layoutName = $name;
-    }
-
-    if (_$layoutIcon && _$layoutIcon.is("input")) {
-      var $badge = _buildIconBadge(layer);
-      _$layoutIcon.replaceWith($badge);
-      _$layoutIcon = $badge;
-    }
-  }
-
-  function _commitEditableLayerInfo() {
-    var cfg = GridCore.getConfig();
-    if (!cfg.layers || !cfg.layers.length) return;
-    var layer = GridCore.getActiveLayer();
-    if (!layer) return;
-
-    var props = {};
-    if (_$layoutName && _$layoutName.is("input")) {
-      var lv = jQuery.trim(_$layoutName.val());
-      if (lv) props.label = lv;
-    }
-    if (_$layoutIcon && _$layoutIcon.is("input")) {
-      var iv = jQuery.trim(_$layoutIcon.val());
-      if (iv) props.icon = iv;
-    }
-    if (props.label || props.icon) {
-      GridCore.updateLayerMeta(layer.id, props);
-    }
   }
 
   // ── Shape panel ───────────────────────────────────
