@@ -167,6 +167,8 @@ var GridLayers = (function () {
       })
       .on("click", function () {
         if (isActive) return;
+        var cfg = GridCore.getConfig();
+        if (cfg.editMode !== false && GridCore.isEditing()) return;
         GridCore.switchLayer(layer.id);
         _rebuildGrid();
         var $panel = _$wrap.find(".tl-layers-panel");
@@ -198,6 +200,7 @@ var GridLayers = (function () {
       .addClass("tl-layers-add-submit")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
+        if (cfg.editMode !== false && GridCore.isEditing()) return;
         if (typeof cfg.onCreateLayer === "function") {
           cfg.onCreateLayer(function (details) {
             _createLayer(details, $panel);

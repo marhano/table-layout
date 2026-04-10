@@ -11,6 +11,7 @@ var GridConfig = (function () {
     gap: 8,
     cellSize: 70,
     draggable: true,
+    editMode: true,
     trashZone: true,
     swapAnimation: true,
     showSizeBadge: true,

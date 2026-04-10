@@ -13,6 +13,8 @@ var GridDrag = (function () {
       "dragstart.tl",
       gridSel + " .tl-table-card",
       function (e) {
+        var cfg = GridCore.getConfig();
+        if (cfg.editMode !== false && !GridCore.isEditing()) return;
         if (GridToolbar.getActive()) return;
         _dragId = jQuery(this).data("table-id");
         e.originalEvent.dataTransfer.effectAllowed = "move";

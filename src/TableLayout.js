@@ -73,6 +73,7 @@ var TableLayout = (function () {
     }
 
     $container.append($wrapper);
+    if (cfg.editMode !== false) $container.addClass("tl-view-mode");
 
     // ── Apply initial zoom ─────────────────────────
     GridZoom.applyZoom(cfg.zoom.initial || 1, true);
@@ -146,6 +147,11 @@ var TableLayout = (function () {
       },
       getAllLayersLayout: function () {
         return GridCore.getAllLayersLayout();
+      },
+
+      // Edit mode
+      isEditing: function () {
+        return GridCore.isEditing();
       },
 
       // Tools

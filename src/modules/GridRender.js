@@ -87,7 +87,7 @@ var GridRender = (function () {
     var $card = jQuery("<div>")
       .addClass(ns("table-card"))
       .attr({
-        draggable: cfg.draggable ? "true" : "false",
+        draggable: (cfg.draggable && (cfg.editMode === false || GridCore.isEditing())) ? "true" : "false",
         "data-table-id": t.id,
         "data-shape": shape,
       })

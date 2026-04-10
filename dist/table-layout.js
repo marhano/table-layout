@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-09T13:22:05.413Z
+ * Built: 2026-04-10T02:13:55.879Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -20,6 +20,7 @@ var GridConfig = (function () {
     gap: 8,
     cellSize: 70,
     draggable: true,
+    editMode: true,
     trashZone: true,
     swapAnimation: true,
     showSizeBadge: true,
@@ -138,7 +139,7 @@ var GridConfig = (function () {
     onTableCreated: null,
     onCreateTable: null,
     onLayerChange: null,  // fn(layer, tables) — fired when active layer changes
-    onLayerAdd: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
+    onCreateLayer: null,     // fn(commit) — override the default add-layer form; call commit({label, icon})
   };
 
   /**
@@ -261,6 +262,8 @@ var GridCore = (function () {
   var _counter = 1;
   var _layers = null;
   var _activeLayerId = null;
+  var _editMode = false;
+  var _snapshot = null;
 
   // ── Setup ─────────────────────────────────────────
 
@@ -285,6 +288,8 @@ var GridCore = (function () {
     _counter = 1;
     _layers = null;
     _activeLayerId = null;
+    _editMode = false;
+    _snapshot = null;
   }
 
   // ── Config ────────────────────────────────────────
@@ -358,6 +363,7 @@ var GridCore = (function () {
 
   function switchLayer(id) {
     if (!_layers) return false;
+    if (_editMode) return false;
     // Save current tables into the active layer
     var current = getActiveLayer();
     if (current) current.tables = jQuery.extend(true, [], _tables);
@@ -384,6 +390,58 @@ var GridCore = (function () {
     var current = getActiveLayer();
     if (current) current.tables = jQuery.extend(true, [], _tables);
     return _layers.map(function (l) { return jQuery.extend(true, {}, l); });
+  }
+
+  // ── Edit mode ─────────────────────────────────────
+
+  function isEditing() { return _editMode; }
+
+  function enterEditMode() {
+    if (_editMode) return;
+    var layerMeta = null;
+    var layer = getActiveLayer();
+    if (layer) layerMeta = { label: layer.label, icon: layer.icon };
+    _snapshot = {
+      tables: jQuery.extend(true, [], _tables),
+      layerMeta: layerMeta,
+    };
+    _editMode = true;
+    GridEvents.emit("edit:enter");
+  }
+
+  function saveEdit() {
+    if (!_editMode) return;
+    _snapshot = null;
+    _editMode = false;
+    GridEvents.emit("edit:saved");
+    GridEvents.emit("edit:exit");
+  }
+
+  function discardEdit() {
+    if (!_editMode) return;
+    _tables = jQuery.extend(true, [], _snapshot.tables);
+    _counter = _tables.length + 1;
+    if (_snapshot.layerMeta) {
+      var layer = getActiveLayer();
+      if (layer) {
+        layer.label = _snapshot.layerMeta.label;
+        layer.icon = _snapshot.layerMeta.icon;
+      }
+    }
+    _snapshot = null;
+    _editMode = false;
+    GridEvents.emit("edit:discarded");
+    GridEvents.emit("edit:exit");
+  }
+
+  function updateLayerMeta(id, props) {
+    if (!_layers) return false;
+    var layer = _layers.find(function (l) { return l.id === id; });
+    if (!layer) return false;
+    if (props.label !== undefined) layer.label = props.label;
+    if (props.icon !== undefined) layer.icon = props.icon;
+    GridEvents.emit("layer:updated", layer);
+    return true;
   }
 
   // ── Layout snapshot ───────────────────────────────
@@ -510,6 +568,11 @@ var GridCore = (function () {
     switchLayer: switchLayer,
     addLayer: addLayer,
     getAllLayersLayout: getAllLayersLayout,
+    isEditing: isEditing,
+    enterEditMode: enterEditMode,
+    saveEdit: saveEdit,
+    discardEdit: discardEdit,
+    updateLayerMeta: updateLayerMeta,
   };
 })();
 
@@ -604,7 +667,7 @@ var GridRender = (function () {
     var $card = jQuery("<div>")
       .addClass(ns("table-card"))
       .attr({
-        draggable: cfg.draggable ? "true" : "false",
+        draggable: (cfg.draggable && (cfg.editMode === false || GridCore.isEditing())) ? "true" : "false",
         "data-table-id": t.id,
         "data-shape": shape,
       })
@@ -713,27 +776,202 @@ var GridRender = (function () {
 var GridToolbar = (function () {
   var _activeTool = null;
   var _$layoutName = null;
+  var _$layoutIcon = null;
+  var _$editSection = null;
+
+  // ── Toolbar build ─────────────────────────────────
 
   function build() {
     var cfg = GridCore.getConfig();
-    var $toolbar = jQuery("<div>")
-      .addClass("tl-toolbar")
-      .css("background", cfg.theme.toolbarBg);
+    var $toolbar = jQuery("<div>").addClass("tl-toolbar");
+
+    // Left: layer icon + name
+    var $left = jQuery("<div>").addClass("tl-toolbar-left");
 
     if (cfg.layers && cfg.layers.length) {
       var activeLayer = GridCore.getActiveLayer();
-      _$layoutName = jQuery("<h3>")
+
+      _$layoutIcon = _buildIconBadge(activeLayer);
+      $left.append(_$layoutIcon);
+
+      _$layoutName = jQuery("<span>")
         .addClass("tl-toolbar-layout-name")
         .text(activeLayer ? activeLayer.label : "");
-      $toolbar.append(_$layoutName);
+      $left.append(_$layoutName);
 
       GridEvents.on("layer:switched", function (layer) {
-        if (_$layoutName) _$layoutName.text(layer ? layer.label : "");
+        _refreshLayerDisplay(layer);
       });
+    }
+
+    $toolbar.append($left);
+    $toolbar.append(jQuery("<div>").addClass("tl-toolbar-spacer"));
+
+    // Right: edit/save/discard (only when editMode is enabled)
+    if (cfg.editMode !== false) {
+      _$editSection = jQuery("<div>").addClass("tl-toolbar-actions");
+      _renderEditControls();
+      $toolbar.append(_$editSection);
     }
 
     return $toolbar;
   }
+
+  // ── Icon badge (display) ──────────────────────────
+
+  function _buildIconBadge(layer) {
+    var $badge = jQuery("<div>").addClass("tl-toolbar-icon-badge");
+    if (layer) {
+      var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;
+      if (isFaIcon) {
+        $badge.append(jQuery("<i>").addClass(layer.icon));
+      } else {
+        $badge.text(layer.icon || (layer.label ? layer.label.charAt(0).toUpperCase() : "?"));
+      }
+    }
+    return $badge;
+  }
+
+  function _refreshLayerDisplay(layer) {
+    if (_$layoutName && !_$layoutName.is("input")) {
+      _$layoutName.text(layer ? layer.label : "");
+    }
+    if (_$layoutIcon && !_$layoutIcon.is("input")) {
+      var $new = _buildIconBadge(layer);
+      _$layoutIcon.replaceWith($new);
+      _$layoutIcon = $new;
+    }
+  }
+
+  // ── Edit controls ─────────────────────────────────
+
+  function _renderEditControls() {
+    if (!_$editSection) return;
+    _$editSection.empty();
+
+    if (GridCore.isEditing()) {
+      _$editSection.append(
+        jQuery("<button>")
+          .addClass("tl-toolbar-btn tl-toolbar-btn--save")
+          .attr("title", "Save changes")
+          .html('<i class="fa-solid fa-check"></i><span>Save</span>')
+          .on("click", _handleSave),
+        jQuery("<button>")
+          .addClass("tl-toolbar-btn tl-toolbar-btn--discard")
+          .attr("title", "Discard changes")
+          .html('<i class="fa-solid fa-xmark"></i><span>Discard</span>')
+          .on("click", _handleDiscard)
+      );
+    } else {
+      _$editSection.append(
+        jQuery("<button>")
+          .addClass("tl-toolbar-btn tl-toolbar-btn--edit")
+          .attr("title", "Edit layout")
+          .html('<i class="fa-solid fa-pen"></i><span>Edit</span>')
+          .on("click", _handleEdit)
+      );
+    }
+  }
+
+  function _handleEdit() {
+    GridCore.enterEditMode();
+    _renderEditControls();
+    _enableEditableLayerInfo();
+    jQuery(".tl-root").removeClass("tl-view-mode").addClass("tl-edit-mode");
+    jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+  }
+
+  function _handleSave() {
+    deactivate();
+    _commitEditableLayerInfo();
+    GridCore.saveEdit();
+    _renderEditControls();
+    _disableEditableLayerInfo();
+    jQuery(".tl-root").removeClass("tl-edit-mode").addClass("tl-view-mode");
+    jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+    var cfg = GridCore.getConfig();
+    if (typeof cfg.onLayoutChange === "function") cfg.onLayoutChange(GridCore.getLayout());
+  }
+
+  function _handleDiscard() {
+    deactivate();
+    GridCore.discardEdit();
+    _renderEditControls();
+    _disableEditableLayerInfo();
+    var layer = GridCore.getActiveLayer();
+    _refreshLayerDisplay(layer);
+    jQuery(".tl-root").removeClass("tl-edit-mode").addClass("tl-view-mode");
+    jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+  }
+
+  // ── Editable layer info ───────────────────────────
+
+  function _enableEditableLayerInfo() {
+    var cfg = GridCore.getConfig();
+    if (!cfg.layers || !cfg.layers.length) return;
+    var layer = GridCore.getActiveLayer();
+    if (!layer) return;
+
+    if (_$layoutName) {
+      var $nameInput = jQuery("<input>")
+        .addClass("tl-toolbar-layout-name-input")
+        .attr({ type: "text", maxlength: 30, placeholder: "Layer name" })
+        .val(layer.label);
+      _$layoutName.replaceWith($nameInput);
+      _$layoutName = $nameInput;
+    }
+
+    if (_$layoutIcon) {
+      var $iconInput = jQuery("<input>")
+        .addClass("tl-toolbar-icon-input")
+        .attr({ type: "text", maxlength: 40, placeholder: "Icon class or emoji" })
+        .val(layer.icon || "");
+      _$layoutIcon.replaceWith($iconInput);
+      _$layoutIcon = $iconInput;
+    }
+  }
+
+  function _disableEditableLayerInfo() {
+    var cfg = GridCore.getConfig();
+    if (!cfg.layers || !cfg.layers.length) return;
+    var layer = GridCore.getActiveLayer();
+
+    if (_$layoutName && _$layoutName.is("input")) {
+      var $name = jQuery("<span>")
+        .addClass("tl-toolbar-layout-name")
+        .text(layer ? layer.label : "");
+      _$layoutName.replaceWith($name);
+      _$layoutName = $name;
+    }
+
+    if (_$layoutIcon && _$layoutIcon.is("input")) {
+      var $badge = _buildIconBadge(layer);
+      _$layoutIcon.replaceWith($badge);
+      _$layoutIcon = $badge;
+    }
+  }
+
+  function _commitEditableLayerInfo() {
+    var cfg = GridCore.getConfig();
+    if (!cfg.layers || !cfg.layers.length) return;
+    var layer = GridCore.getActiveLayer();
+    if (!layer) return;
+
+    var props = {};
+    if (_$layoutName && _$layoutName.is("input")) {
+      var lv = jQuery.trim(_$layoutName.val());
+      if (lv) props.label = lv;
+    }
+    if (_$layoutIcon && _$layoutIcon.is("input")) {
+      var iv = jQuery.trim(_$layoutIcon.val());
+      if (iv) props.icon = iv;
+    }
+    if (props.label || props.icon) {
+      GridCore.updateLayerMeta(layer.id, props);
+    }
+  }
+
+  // ── Shape panel ───────────────────────────────────
 
   function buildShapePanel() {
     var cfg = GridCore.getConfig();
@@ -758,6 +996,8 @@ var GridToolbar = (function () {
   }
 
   function toggle(key) {
+    var cfg = GridCore.getConfig();
+    if (cfg.editMode !== false && !GridCore.isEditing()) return;
     if (_activeTool === key) {
       deactivate();
     } else {
@@ -896,6 +1136,8 @@ var GridDrag = (function () {
       "dragstart.tl",
       gridSel + " .tl-table-card",
       function (e) {
+        var cfg = GridCore.getConfig();
+        if (cfg.editMode !== false && !GridCore.isEditing()) return;
         if (GridToolbar.getActive()) return;
         _dragId = jQuery(this).data("table-id");
         e.originalEvent.dataTransfer.effectAllowed = "move";
@@ -1051,6 +1293,7 @@ var GridPlace = (function () {
     var gridSel = "#" + cfg.containerId + " .tl-layout-grid";
 
     jQuery(document).on("mousedown.tl", gridSel + " .tl-cell", function (e) {
+      if (cfg.editMode !== false && !GridCore.isEditing()) return;
       if (!GridToolbar.getActive() || e.which !== 1) return;
       e.preventDefault();
       _start = {
@@ -1401,7 +1644,7 @@ var GridLayers = (function () {
     var tables = layer.id === GridCore.getActiveLayerId()
       ? GridCore.getTables()
       : (layer.tables || []);
-    var cellSize = 8;
+    var cellSize = 4;
     var gap = 1;
     var cols = cfg.columns;
     var rows = cfg.rows;
@@ -1464,6 +1707,8 @@ var GridLayers = (function () {
       })
       .on("click", function () {
         if (isActive) return;
+        var cfg = GridCore.getConfig();
+        if (cfg.editMode !== false && GridCore.isEditing()) return;
         GridCore.switchLayer(layer.id);
         _rebuildGrid();
         var $panel = _$wrap.find(".tl-layers-panel");
@@ -1495,8 +1740,11 @@ var GridLayers = (function () {
       .addClass("tl-layers-add-submit")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
-        if (typeof cfg.onLayerAdd === "function") {
-          cfg.onLayerAdd(function (details) { _createLayer(details, $panel); });
+        if (cfg.editMode !== false && GridCore.isEditing()) return;
+        if (typeof cfg.onCreateLayer === "function") {
+          cfg.onCreateLayer(function (details) {
+            _createLayer(details, $panel);
+          });
           return;
         }
         _openAddModal($panel);
@@ -1655,6 +1903,7 @@ var TableLayout = (function () {
     }
 
     $container.append($wrapper);
+    if (cfg.editMode !== false) $container.addClass("tl-view-mode");
 
     // ── Apply initial zoom ─────────────────────────
     GridZoom.applyZoom(cfg.zoom.initial || 1, true);
@@ -1728,6 +1977,11 @@ var TableLayout = (function () {
       },
       getAllLayersLayout: function () {
         return GridCore.getAllLayersLayout();
+      },
+
+      // Edit mode
+      isEditing: function () {
+        return GridCore.isEditing();
       },
 
       // Tools

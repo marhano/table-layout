@@ -9,6 +9,8 @@ var GridCore = (function () {
   var _counter = 1;
   var _layers = null;
   var _activeLayerId = null;
+  var _editMode = false;
+  var _snapshot = null;
 
   // ── Setup ─────────────────────────────────────────
 
@@ -33,6 +35,8 @@ var GridCore = (function () {
     _counter = 1;
     _layers = null;
     _activeLayerId = null;
+    _editMode = false;
+    _snapshot = null;
   }
 
   // ── Config ────────────────────────────────────────
@@ -106,6 +110,7 @@ var GridCore = (function () {
 
   function switchLayer(id) {
     if (!_layers) return false;
+    if (_editMode) return false;
     // Save current tables into the active layer
     var current = getActiveLayer();
     if (current) current.tables = jQuery.extend(true, [], _tables);
@@ -132,6 +137,58 @@ var GridCore = (function () {
     var current = getActiveLayer();
     if (current) current.tables = jQuery.extend(true, [], _tables);
     return _layers.map(function (l) { return jQuery.extend(true, {}, l); });
+  }
+
+  // ── Edit mode ─────────────────────────────────────
+
+  function isEditing() { return _editMode; }
+
+  function enterEditMode() {
+    if (_editMode) return;
+    var layerMeta = null;
+    var layer = getActiveLayer();
+    if (layer) layerMeta = { label: layer.label, icon: layer.icon };
+    _snapshot = {
+      tables: jQuery.extend(true, [], _tables),
+      layerMeta: layerMeta,
+    };
+    _editMode = true;
+    GridEvents.emit("edit:enter");
+  }
+
+  function saveEdit() {
+    if (!_editMode) return;
+    _snapshot = null;
+    _editMode = false;
+    GridEvents.emit("edit:saved");
+    GridEvents.emit("edit:exit");
+  }
+
+  function discardEdit() {
+    if (!_editMode) return;
+    _tables = jQuery.extend(true, [], _snapshot.tables);
+    _counter = _tables.length + 1;
+    if (_snapshot.layerMeta) {
+      var layer = getActiveLayer();
+      if (layer) {
+        layer.label = _snapshot.layerMeta.label;
+        layer.icon = _snapshot.layerMeta.icon;
+      }
+    }
+    _snapshot = null;
+    _editMode = false;
+    GridEvents.emit("edit:discarded");
+    GridEvents.emit("edit:exit");
+  }
+
+  function updateLayerMeta(id, props) {
+    if (!_layers) return false;
+    var layer = _layers.find(function (l) { return l.id === id; });
+    if (!layer) return false;
+    if (props.label !== undefined) layer.label = props.label;
+    if (props.icon !== undefined) layer.icon = props.icon;
+    GridEvents.emit("layer:updated", layer);
+    return true;
   }
 
   // ── Layout snapshot ───────────────────────────────
@@ -258,5 +315,10 @@ var GridCore = (function () {
     switchLayer: switchLayer,
     addLayer: addLayer,
     getAllLayersLayout: getAllLayersLayout,
+    isEditing: isEditing,
+    enterEditMode: enterEditMode,
+    saveEdit: saveEdit,
+    discardEdit: discardEdit,
+    updateLayerMeta: updateLayerMeta,
   };
 })();

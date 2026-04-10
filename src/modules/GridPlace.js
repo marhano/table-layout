@@ -8,6 +8,7 @@ var GridPlace = (function () {
     var gridSel = "#" + cfg.containerId + " .tl-layout-grid";
 
     jQuery(document).on("mousedown.tl", gridSel + " .tl-cell", function (e) {
+      if (cfg.editMode !== false && !GridCore.isEditing()) return;
       if (!GridToolbar.getActive() || e.which !== 1) return;
       e.preventDefault();
       _start = {
