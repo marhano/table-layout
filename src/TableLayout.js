@@ -92,7 +92,7 @@ var TableLayout = (function () {
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
     GridEvents.on("layer:updated", function (layer) {
-      if (typeof cfg.onLayerChange === "function")
+      if (typeof cfg.onLayerChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
     GridEvents.on("layer:deleted", function (removed) {

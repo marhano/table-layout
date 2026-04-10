@@ -130,7 +130,7 @@ var GridToolbar = (function () {
       if (val && val !== layer.label) {
         GridCore.updateLayerMeta(layer.id, { label: val });
         var c = GridCore.getConfig();
-        if (typeof c.onLayerChange === "function")
+        if (typeof c.onLayerChange === "function" && !GridCore.isEditing())
           c.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
       }
       var updatedLayer = GridCore.getActiveLayer();
@@ -299,7 +299,7 @@ var GridToolbar = (function () {
   function _selectIcon(layer, value) {
     GridCore.updateLayerMeta(layer.id, { icon: value });
     var cfg = GridCore.getConfig();
-    if (typeof cfg.onLayerChange === "function")
+    if (typeof cfg.onLayerChange === "function" && !GridCore.isEditing())
       cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
     var updated = GridCore.getActiveLayer();
     _$layoutIcon.find(".tl-icon-picker").detach();
@@ -422,6 +422,8 @@ var GridToolbar = (function () {
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
     var cfg = GridCore.getConfig();
     if (typeof cfg.onLayoutChange === "function") cfg.onLayoutChange(GridCore.getLayout());
+    if (typeof cfg.onLayerChange === "function")
+      cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
   }
 
   function _handleDiscard() {

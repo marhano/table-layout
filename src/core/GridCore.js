@@ -211,6 +211,8 @@ var GridCore = (function () {
     }
     _snapshot = null;
     _editMode = false;
+    var restoredLayer = getActiveLayer();
+    if (restoredLayer) GridEvents.emit("layer:updated", restoredLayer);
     GridEvents.emit("edit:discarded");
     GridEvents.emit("edit:exit");
   }

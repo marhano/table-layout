@@ -237,7 +237,7 @@ var GridPlace = (function () {
     jQuery(".tl-layout-grid").append(GridRender.buildTableCard(newTable));
 
     if (typeof cfg.onTableCreated === "function") cfg.onTableCreated(newTable);
-    if (typeof cfg.onLayoutChange === "function")
+    if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
       cfg.onLayoutChange(GridCore.getLayout());
 
     _pending = null;

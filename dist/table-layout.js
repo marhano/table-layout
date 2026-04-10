@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-10T04:49:51.593Z
+ * Built: 2026-04-10T05:12:57.909Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -496,6 +496,8 @@ var GridCore = (function () {
     }
     _snapshot = null;
     _editMode = false;
+    var restoredLayer = getActiveLayer();
+    if (restoredLayer) GridEvents.emit("layer:updated", restoredLayer);
     GridEvents.emit("edit:discarded");
     GridEvents.emit("edit:exit");
   }
@@ -973,7 +975,7 @@ var GridToolbar = (function () {
       if (val && val !== layer.label) {
         GridCore.updateLayerMeta(layer.id, { label: val });
         var c = GridCore.getConfig();
-        if (typeof c.onLayerChange === "function")
+        if (typeof c.onLayerChange === "function" && !GridCore.isEditing())
           c.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
       }
       var updatedLayer = GridCore.getActiveLayer();
@@ -1142,7 +1144,7 @@ var GridToolbar = (function () {
   function _selectIcon(layer, value) {
     GridCore.updateLayerMeta(layer.id, { icon: value });
     var cfg = GridCore.getConfig();
-    if (typeof cfg.onLayerChange === "function")
+    if (typeof cfg.onLayerChange === "function" && !GridCore.isEditing())
       cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
     var updated = GridCore.getActiveLayer();
     _$layoutIcon.find(".tl-icon-picker").detach();
@@ -1265,6 +1267,8 @@ var GridToolbar = (function () {
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
     var cfg = GridCore.getConfig();
     if (typeof cfg.onLayoutChange === "function") cfg.onLayoutChange(GridCore.getLayout());
+    if (typeof cfg.onLayerChange === "function")
+      cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
   }
 
   function _handleDiscard() {
@@ -1496,7 +1500,7 @@ var GridDrag = (function () {
       _removeGhost();
       jQuery('[data-table-id="' + id + '"]').remove();
       GridCore.removeTable(id);
-      if (typeof cfg.onLayoutChange === "function") cfg.onLayoutChange(GridCore.getLayout());
+      if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing())) cfg.onLayoutChange(GridCore.getLayout());
     });
 
     jQuery(document).on("dragover.tl", gridSel, function (e) {
@@ -1566,7 +1570,7 @@ var GridDrag = (function () {
 
       if (typeof cfg.onSwap === "function")
         cfg.onSwap(from, { col: pos.col, row: pos.row }, GridCore.getLayout());
-      if (typeof cfg.onLayoutChange === "function")
+      if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
         cfg.onLayoutChange(GridCore.getLayout());
 
       _dragId = null;
@@ -1834,7 +1838,7 @@ var GridPlace = (function () {
     jQuery(".tl-layout-grid").append(GridRender.buildTableCard(newTable));
 
     if (typeof cfg.onTableCreated === "function") cfg.onTableCreated(newTable);
-    if (typeof cfg.onLayoutChange === "function")
+    if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
       cfg.onLayoutChange(GridCore.getLayout());
 
     _pending = null;
@@ -2354,7 +2358,7 @@ var TableLayout = (function () {
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
     GridEvents.on("layer:updated", function (layer) {
-      if (typeof cfg.onLayerChange === "function")
+      if (typeof cfg.onLayerChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
         cfg.onLayerChange(layer, GridCore.getLayout());
     });
     GridEvents.on("layer:deleted", function (removed) {
