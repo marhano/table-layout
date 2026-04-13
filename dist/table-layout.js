@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-10T07:49:46.118Z
+ * Built: 2026-04-13T02:02:07.095Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -60,9 +60,6 @@ var GridConfig = (function () {
       step: 0.1,
       mouseWheel: true,
       showControls: true,
-      showLabel: true,
-      labelZoomIn: "＋",
-      labelZoomOut: "－",
       labelReset: "↺",
     },
 
@@ -1423,6 +1420,37 @@ var GridZoom = (function () {
         _zoom + (e.originalEvent.deltaY > 0 ? -1 : 1) * (zCfg.step || 0.1),
       );
     });
+
+    // ── Pinch-to-zoom (touch) ──────────────────────
+    var _pinchStartDist = null;
+    var _pinchStartZoom = null;
+
+    jQuery("#" + cfg.containerId).on("touchstart.tl-zoom", function (e) {
+      if (e.originalEvent.touches.length === 2) {
+        var t1 = e.originalEvent.touches[0];
+        var t2 = e.originalEvent.touches[1];
+        _pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        _pinchStartZoom = _zoom;
+      }
+    });
+
+    jQuery("#" + cfg.containerId).on("touchmove.tl-zoom", function (e) {
+      if (e.originalEvent.touches.length === 2 && _pinchStartDist) {
+        e.preventDefault();
+        var t1 = e.originalEvent.touches[0];
+        var t2 = e.originalEvent.touches[1];
+        var dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        var scale = dist / _pinchStartDist;
+        applyZoom(_pinchStartZoom * scale);
+      }
+    });
+
+    jQuery("#" + cfg.containerId).on("touchend.tl-zoom touchcancel.tl-zoom", function (e) {
+      if (e.originalEvent.touches.length < 2) {
+        _pinchStartDist = null;
+        _pinchStartZoom = null;
+      }
+    });
   }
 
   function _fmt(l) {
@@ -1446,6 +1474,12 @@ var GridZoom = (function () {
 var GridDrag = (function () {
   var _dragId = null;
   var _$ghost = null;
+  var _touchDragId = null;
+  var _touchStartPos = null;
+  var _touchMoved = false;
+  var _touchTimer = null;
+  var _touchReady = false;
+  var _dragTouchMoveHandler = null;
 
   function bind() {
     var cfg = GridCore.getConfig();
@@ -1482,6 +1516,121 @@ var GridDrag = (function () {
       }
       _removeGhost();
       if (cfg.trashZone) jQuery(trashSel).removeClass("tl-trash-zone--visible tl-trash-zone--active");
+    });
+
+    // ── Touch: table drag (long-press to initiate) ─
+    jQuery(document).on("touchstart.tl", gridSel + " .tl-table-card", function (e) {
+      if (cfg.editMode !== false && !GridCore.isEditing()) return;
+      if (GridToolbar.getActive()) return;
+      if (e.originalEvent.touches.length !== 1) return;
+      var touch = e.originalEvent.touches[0];
+      _touchDragId = jQuery(this).data("table-id");
+      _touchStartPos = { x: touch.clientX, y: touch.clientY };
+      _touchMoved = false;
+      _touchReady = false;
+
+      clearTimeout(_touchTimer);
+      _touchTimer = setTimeout(function () {
+        if (!_touchDragId) return;
+        _touchReady = true;
+        jQuery('[data-table-id="' + _touchDragId + '"]').css("opacity", "0.25");
+        if (cfg.trashZone) jQuery(trashSel).addClass("tl-trash-zone--visible");
+      }, 300);
+
+      _dragTouchMoveHandler = function (te) {
+        if (!_touchDragId) return;
+        if (te.touches.length !== 1) return;
+        var tc = te.touches[0];
+
+        if (!_touchReady) {
+          var dx = tc.clientX - _touchStartPos.x;
+          var dy = tc.clientY - _touchStartPos.y;
+          if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+            clearTimeout(_touchTimer);
+            _touchDragId = null;
+            document.removeEventListener("touchmove", _dragTouchMoveHandler);
+            _dragTouchMoveHandler = null;
+          }
+          return;
+        }
+
+        te.preventDefault();
+        _touchMoved = true;
+        var t = GridCore.tableById(_touchDragId);
+        if (!t) return;
+        var pos = GridCore.cursorToGrid(tc.clientX, tc.clientY);
+        var bad = GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id);
+        _showGhost(pos.col, pos.row, t.colSpan, t.rowSpan, bad);
+
+        if (cfg.trashZone) {
+          var trashEl = jQuery(trashSel)[0];
+          if (trashEl) {
+            var trashRect = trashEl.getBoundingClientRect();
+            var overTrash = tc.clientX >= trashRect.left && tc.clientX <= trashRect.right &&
+                            tc.clientY >= trashRect.top && tc.clientY <= trashRect.bottom;
+            jQuery(trashSel).toggleClass("tl-trash-zone--active", overTrash);
+          }
+        }
+      };
+      document.addEventListener("touchmove", _dragTouchMoveHandler, { passive: false });
+    });
+
+    jQuery(document).on("touchend.tl", function (e) {
+      clearTimeout(_touchTimer);
+      if (_dragTouchMoveHandler) {
+        document.removeEventListener("touchmove", _dragTouchMoveHandler);
+        _dragTouchMoveHandler = null;
+      }
+      if (!_touchDragId) return;
+      var id = _touchDragId;
+      _touchDragId = null;
+
+      jQuery('[data-table-id="' + id + '"]').css("opacity", "");
+      _removeGhost();
+      if (cfg.trashZone) jQuery(trashSel).removeClass("tl-trash-zone--visible tl-trash-zone--active");
+
+      if (!_touchMoved) return;
+
+      var touch = e.originalEvent.changedTouches[0];
+      var t = GridCore.tableById(id);
+      if (!t) return;
+
+      // Check if dropped on trash zone
+      if (cfg.trashZone) {
+        var trashEl = jQuery(trashSel)[0];
+        if (trashEl) {
+          var trashRect = trashEl.getBoundingClientRect();
+          var overTrash = touch.clientX >= trashRect.left && touch.clientX <= trashRect.right &&
+                          touch.clientY >= trashRect.top && touch.clientY <= trashRect.bottom;
+          if (overTrash) {
+            jQuery('[data-table-id="' + id + '"]').remove();
+            GridCore.removeTable(id);
+            if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
+              cfg.onLayoutChange(GridCore.getLayout());
+            return;
+          }
+        }
+      }
+
+      var pos = GridCore.cursorToGrid(touch.clientX, touch.clientY);
+      if (GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id)) return;
+
+      var from = { col: t.col, row: t.row };
+      GridCore.moveTable(t.id, pos.col, pos.row);
+      jQuery('[data-table-id="' + t.id + '"]').replaceWith(GridRender.buildTableCard(t));
+
+      if (cfg.swapAnimation) {
+        jQuery('[data-table-id="' + t.id + '"]').addClass("tl-swap-animate");
+        setTimeout(function () {
+          jQuery('[data-table-id="' + t.id + '"]').removeClass("tl-swap-animate");
+        }, 280);
+      }
+
+      GridEvents.emit("table:moved", { from: from, to: { col: pos.col, row: pos.row } });
+      if (typeof cfg.onSwap === "function")
+        cfg.onSwap(from, { col: pos.col, row: pos.row }, GridCore.getLayout());
+      if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
+        cfg.onLayoutChange(GridCore.getLayout());
     });
 
     if (!cfg.trashZone) return;
@@ -1584,6 +1733,11 @@ var GridDrag = (function () {
   }
 
   function unbind() {
+    clearTimeout(_touchTimer);
+    if (_dragTouchMoveHandler) {
+      document.removeEventListener("touchmove", _dragTouchMoveHandler);
+      _dragTouchMoveHandler = null;
+    }
     jQuery(document).off(".tl");
   }
 
@@ -1609,6 +1763,7 @@ var GridPlace = (function () {
   var _start = null;
   var _$ghost = null;
   var _pending = null;
+  var _placeTouchMoveHandler = null;
 
   function bind() {
     var cfg = GridCore.getConfig();
@@ -1677,6 +1832,48 @@ var GridPlace = (function () {
     jQuery(document).on("keydown.tl", function (e) {
       if (e.key === "Escape" && GridToolbar.getActive())
         GridToolbar.deactivate();
+    });
+
+    // ── Touch: shape drawing ───────────────────────
+    jQuery(document).on("touchstart.tl", gridSel + " .tl-cell", function (e) {
+      if (cfg.editMode !== false && !GridCore.isEditing()) return;
+      if (!GridToolbar.getActive()) return;
+      if (e.originalEvent.touches.length !== 1) return;
+      e.preventDefault();
+      var touch = e.originalEvent.touches[0];
+      var $cell = jQuery(document.elementFromPoint(touch.clientX, touch.clientY)).closest(".tl-cell");
+      if (!$cell.length) return;
+      _start = {
+        col: parseInt($cell.data("col")),
+        row: parseInt($cell.data("row")),
+      };
+
+      _placeTouchMoveHandler = function (te) {
+        if (!_start) return;
+        if (te.touches.length !== 1) return;
+        te.preventDefault();
+        var tc = te.touches[0];
+        var end = GridCore.cursorToGrid(tc.clientX, tc.clientY);
+        var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
+        var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
+        _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
+      };
+      document.addEventListener("touchmove", _placeTouchMoveHandler, { passive: false });
+    });
+
+    jQuery(document).on("touchend.tl", function (e) {
+      if (_placeTouchMoveHandler) {
+        document.removeEventListener("touchmove", _placeTouchMoveHandler);
+        _placeTouchMoveHandler = null;
+      }
+      if (!GridToolbar.getActive() || !_start) return;
+      var touch = e.originalEvent.changedTouches[0];
+      var end = GridCore.cursorToGrid(touch.clientX, touch.clientY);
+      var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
+      _removeGhost();
+      _start = null;
+      if (GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null)) return;
+      _showModal(jQuery.extend({}, span, { shape: GridToolbar.getActive() }));
     });
   }
 
@@ -1858,6 +2055,10 @@ var GridPlace = (function () {
   }
 
   function unbind() {
+    if (_placeTouchMoveHandler) {
+      document.removeEventListener("touchmove", _placeTouchMoveHandler);
+      _placeTouchMoveHandler = null;
+    }
     jQuery(document).off(".tl");
   }
 
@@ -2132,6 +2333,55 @@ var GridLayers = (function () {
       if (fromIdx === -1 || toIdx === -1) return;
       currentIds.splice(fromIdx, 1);
       currentIds.splice(toIdx, 0, draggedId);
+      GridCore.reorderLayers(currentIds);
+      var $panel = _$wrap.find(".tl-layers-panel");
+      _renderPanelContent($panel);
+      if (cfg.editMode === false && typeof cfg.onLayoutChange === "function")
+        cfg.onLayoutChange(GridCore.getLayout());
+    });
+
+    // Touch-to-reorder events (long press)
+    var _touchTimer = null;
+    var _touchDragging = false;
+    $item.on("touchstart", function (e) {
+      if (cfg.editMode !== false && !GridCore.isEditing()) return;
+      if (e.originalEvent.touches.length !== 1) return;
+      _touchDragging = false;
+      _touchTimer = setTimeout(function () {
+        _touchDragging = true;
+        $item.addClass("tl-layers-item--dragging");
+      }, 400);
+    });
+    $item.on("touchmove", function (e) {
+      if (!_touchDragging) { clearTimeout(_touchTimer); return; }
+      e.preventDefault();
+      var touch = e.originalEvent.touches[0];
+      var el = document.elementFromPoint(touch.clientX, touch.clientY);
+      var $target = jQuery(el).closest(".tl-layers-item");
+      _$wrap.find(".tl-layers-item--drag-over").removeClass("tl-layers-item--drag-over");
+      if ($target.length && $target.data("layer-id") !== layer.id) {
+        $target.addClass("tl-layers-item--drag-over");
+      }
+    });
+    $item.on("touchend touchcancel", function (e) {
+      clearTimeout(_touchTimer);
+      if (!_touchDragging) return;
+      _touchDragging = false;
+      $item.removeClass("tl-layers-item--dragging");
+      _$wrap.find(".tl-layers-item--drag-over").removeClass("tl-layers-item--drag-over");
+
+      var touch = e.originalEvent.changedTouches[0];
+      var el = document.elementFromPoint(touch.clientX, touch.clientY);
+      var $target = jQuery(el).closest(".tl-layers-item");
+      var targetId = $target.data("layer-id");
+      if (!targetId || targetId === layer.id) return;
+
+      var currentIds = layers.map(function (l) { return l.id; });
+      var fromIdx = currentIds.indexOf(layer.id);
+      var toIdx = currentIds.indexOf(targetId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      currentIds.splice(fromIdx, 1);
+      currentIds.splice(toIdx, 0, layer.id);
       GridCore.reorderLayers(currentIds);
       var $panel = _$wrap.find(".tl-layers-panel");
       _renderPanelContent($panel);

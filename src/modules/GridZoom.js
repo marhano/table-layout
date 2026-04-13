@@ -68,6 +68,37 @@ var GridZoom = (function () {
         _zoom + (e.originalEvent.deltaY > 0 ? -1 : 1) * (zCfg.step || 0.1),
       );
     });
+
+    // ── Pinch-to-zoom (touch) ──────────────────────
+    var _pinchStartDist = null;
+    var _pinchStartZoom = null;
+
+    jQuery("#" + cfg.containerId).on("touchstart.tl-zoom", function (e) {
+      if (e.originalEvent.touches.length === 2) {
+        var t1 = e.originalEvent.touches[0];
+        var t2 = e.originalEvent.touches[1];
+        _pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        _pinchStartZoom = _zoom;
+      }
+    });
+
+    jQuery("#" + cfg.containerId).on("touchmove.tl-zoom", function (e) {
+      if (e.originalEvent.touches.length === 2 && _pinchStartDist) {
+        e.preventDefault();
+        var t1 = e.originalEvent.touches[0];
+        var t2 = e.originalEvent.touches[1];
+        var dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        var scale = dist / _pinchStartDist;
+        applyZoom(_pinchStartZoom * scale);
+      }
+    });
+
+    jQuery("#" + cfg.containerId).on("touchend.tl-zoom touchcancel.tl-zoom", function (e) {
+      if (e.originalEvent.touches.length < 2) {
+        _pinchStartDist = null;
+        _pinchStartZoom = null;
+      }
+    });
   }
 
   function _fmt(l) {
