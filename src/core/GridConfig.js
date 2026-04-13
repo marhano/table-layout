@@ -51,9 +51,6 @@ var GridConfig = (function () {
       step: 0.1,
       mouseWheel: true,
       showControls: true,
-      showLabel: true,
-      labelZoomIn: "＋",
-      labelZoomOut: "－",
       labelReset: "↺",
     },
 
