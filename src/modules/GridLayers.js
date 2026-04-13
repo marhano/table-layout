@@ -235,7 +235,7 @@ var GridLayers = (function () {
 
     // Drag-to-reorder events
     $item.on("dragstart", function (e) {
-      if (cfg.editMode !== false && GridCore.isEditing()) { e.preventDefault(); return; }
+      if (cfg.editMode !== false && !GridCore.isEditing()) { e.preventDefault(); return; }
       e.originalEvent.dataTransfer.effectAllowed = "move";
       e.originalEvent.dataTransfer.setData("text/plain", layer.id);
       $item.addClass("tl-layers-item--dragging");
@@ -267,8 +267,8 @@ var GridLayers = (function () {
       GridCore.reorderLayers(currentIds);
       var $panel = _$wrap.find(".tl-layers-panel");
       _renderPanelContent($panel);
-      if (typeof cfg.onLayerChange === "function")
-        cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+      if (cfg.editMode === false && typeof cfg.onLayoutChange === "function")
+        cfg.onLayoutChange(GridCore.getLayout());
     });
 
     var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;

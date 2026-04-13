@@ -185,6 +185,7 @@ var GridCore = (function () {
     _snapshot = {
       tables: jQuery.extend(true, [], _tables),
       layerMeta: layerMeta,
+      layerOrder: _layers ? _layers.map(function (l) { return l.id; }) : null,
     };
     _editMode = true;
     GridEvents.emit("edit:enter");
@@ -208,6 +209,9 @@ var GridCore = (function () {
         layer.label = _snapshot.layerMeta.label;
         layer.icon = _snapshot.layerMeta.icon;
       }
+    }
+    if (_snapshot.layerOrder && _layers) {
+      reorderLayers(_snapshot.layerOrder);
     }
     _snapshot = null;
     _editMode = false;
