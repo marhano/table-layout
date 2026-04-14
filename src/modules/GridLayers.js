@@ -1,6 +1,6 @@
 /**
  * GridLayers.js
- * Layer switcher UI — lets users create and switch between multiple table layouts.
+ * Room switcher UI — lets users create and switch between rooms within the active layer.
  * Only active when cfg.layers is defined.
  */
 var GridLayers = (function () {
@@ -15,8 +15,8 @@ var GridLayers = (function () {
 
     var $btn = jQuery("<button>")
       .addClass("tl-layers-btn tl-layers-btn--active")
-      .attr("title", "Switch Layout")
-      .html('<i class="fa-solid fa-layer-group"></i>')
+      .attr("title", "Switch Room")
+      .html('<i class="fa-solid fa-door-open"></i>')
       .on("click", function (e) {
         e.stopPropagation();
         var isOpen = _$wrap.find(".tl-layers-panel").hasClass("tl-layers-panel--open");
@@ -33,14 +33,16 @@ var GridLayers = (function () {
     _$wrap.append($btn);
     _$wrap.append($panel);
 
-    // Re-render panel when layers change
+    // Re-render panel when rooms change
     var _refreshPanel = function () {
       var $p = _$wrap.find(".tl-layers-panel");
       if ($p.length) _renderPanelContent($p);
     };
-    GridEvents.on("layer:updated", _refreshPanel);
-    GridEvents.on("layer:deleted", _refreshPanel);
-    GridEvents.on("layer:reordered", _refreshPanel);
+    GridEvents.on("room:updated", _refreshPanel);
+    GridEvents.on("room:deleted", _refreshPanel);
+    GridEvents.on("room:reordered", _refreshPanel);
+    GridEvents.on("room:switched", _refreshPanel);
+    // Also refresh when layer switches (new set of rooms)
     GridEvents.on("layer:switched", _refreshPanel);
 
     return _$wrap;
@@ -60,20 +62,17 @@ var GridLayers = (function () {
   function _renderPanelContent($panel) {
     $panel.empty();
 
-    var layers = GridCore.getLayers();
-    var activeId = GridCore.getActiveLayerId();
+    var rooms = GridCore.getRooms();
+    var activeId = GridCore.getActiveRoomId();
 
-    // Layer list (scrollable, max 3 visible)
     var $list = jQuery("<div>").addClass("tl-layers-list");
-    jQuery.each(layers, function (_, layer) {
-      $list.append(_buildLayerItem(layer, layer.id === activeId));
+    jQuery.each(rooms, function (_, room) {
+      $list.append(_buildRoomItem(room, room.id === activeId));
     });
     $panel.append($list);
 
-    // Separator
     $panel.append(jQuery("<div>").addClass("tl-layers-separator"));
 
-    // Always-visible add form
     $panel.append(_buildAddForm($panel));
   }
 
@@ -91,16 +90,15 @@ var GridLayers = (function () {
     _$wrap.find(".tl-layers-btn").removeClass("tl-layers-btn--active");
   }
 
-  // ── Layer item ────────────────────────────────────
+  // ── Room item ─────────────────────────────────────
 
-  function _showPreview(layer, $item) {
+  function _showPreview(room, $item) {
     var cfg = GridCore.getConfig();
-    if (cfg.layerPreview === false) return;
+    if (cfg.roomPreview === false) return;
     _hidePreview();
-    _$activePreview = _buildLayerPreview(layer);
+    _$activePreview = _buildRoomPreview(room);
     _$wrap.append(_$activePreview);
 
-    // Position relative to the hovered item within _$wrap
     var wrapOffset = _$wrap.offset();
     var itemOffset = $item.offset();
     var itemH = $item.outerHeight();
@@ -119,15 +117,14 @@ var GridLayers = (function () {
     }
   }
 
-  function _buildLayerPreview(layer) {
+  function _buildRoomPreview(room) {
     var cfg = GridCore.getConfig();
-    var tables = layer.id === GridCore.getActiveLayerId()
+    var tables = room.id === GridCore.getActiveRoomId()
       ? GridCore.getTables()
-      : (layer.tables || []);
+      : (room.tables || []);
     var cols = cfg.columns;
     var rows = cfg.rows;
 
-    // Compute bounding box of all tables
     var minC = cols + 1, minR = rows + 1, maxC = 0, maxR = 0;
     jQuery.each(tables, function (_, t) {
       if (t.col < minC) minC = t.col;
@@ -138,12 +135,10 @@ var GridLayers = (function () {
       if (endR > maxR) maxR = endR;
     });
 
-    // If no tables, show full grid
     if (tables.length === 0) {
       minC = 1; minR = 1; maxC = cols; maxR = rows;
     }
 
-    // Add 1-cell padding around content, clamped to grid bounds
     minC = Math.max(1, minC - 1);
     minR = Math.max(1, minR - 1);
     maxC = Math.min(cols, maxC + 1);
@@ -152,12 +147,10 @@ var GridLayers = (function () {
     var cropCols = maxC - minC + 1;
     var cropRows = maxR - minR + 1;
 
-    // Target size: fit within a max preview box
     var maxPreviewW = 120;
     var maxPreviewH = 90;
     var gap = 1;
 
-    // Compute cell size to fit
     var cellW = Math.floor((maxPreviewW - (cropCols - 1) * gap) / cropCols);
     var cellH = Math.floor((maxPreviewH - (cropRows - 1) * gap) / cropRows);
     var cellSize = Math.max(2, Math.min(cellW, cellH));
@@ -176,7 +169,6 @@ var GridLayers = (function () {
       "height": gridH + "px",
     });
 
-    // Background cells
     for (var r = 0; r < cropRows; r++) {
       for (var c = 0; c < cropCols; c++) {
         $grid.append(
@@ -188,7 +180,6 @@ var GridLayers = (function () {
       }
     }
 
-    // Table blocks — offset to cropped coordinates
     var cubeH = Math.max(2, Math.round(cellSize * 0.4));
     jQuery.each(tables, function (_, t) {
       var statusColor = cfg.statusColors[t.status] || "#6b7280";
@@ -206,17 +197,17 @@ var GridLayers = (function () {
     return $popup;
   }
 
-  function _buildLayerItem(layer, isActive) {
-    var layers = GridCore.getLayers();
+  function _buildRoomItem(room, isActive) {
+    var rooms = GridCore.getRooms();
     var cfg = GridCore.getConfig();
 
     var $item = jQuery("<div>")
       .addClass("tl-layers-item" + (isActive ? " tl-layers-item--active" : ""))
-      .attr({ "title": layer.label, "data-layer-id": layer.id, "draggable": "true" })
+      .attr({ "title": room.label, "data-room-id": room.id, "draggable": "true" })
       .on("mouseenter", function () {
         var self = this;
         clearTimeout(_hoverTimer);
-        _hoverTimer = setTimeout(function () { _showPreview(layer, jQuery(self)); }, 500);
+        _hoverTimer = setTimeout(function () { _showPreview(room, jQuery(self)); }, 500);
       })
       .on("mouseleave", function () {
         clearTimeout(_hoverTimer);
@@ -225,19 +216,19 @@ var GridLayers = (function () {
       .on("click", function (e) {
         if (isActive) return;
         if (cfg.editMode !== false && GridCore.isEditing()) return;
-        GridCore.switchLayer(layer.id);
+        GridCore.switchRoom(room.id);
         _rebuildGrid();
         var $panel = _$wrap.find(".tl-layers-panel");
         _renderPanelContent($panel);
-        if (typeof cfg.onLayerChange === "function")
-          cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+        if (typeof cfg.onRoomChange === "function")
+          cfg.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
       });
 
     // Drag-to-reorder events
     $item.on("dragstart", function (e) {
       if (cfg.editMode !== false && !GridCore.isEditing()) { e.preventDefault(); return; }
       e.originalEvent.dataTransfer.effectAllowed = "move";
-      e.originalEvent.dataTransfer.setData("text/plain", layer.id);
+      e.originalEvent.dataTransfer.setData("text/plain", room.id);
       $item.addClass("tl-layers-item--dragging");
     });
     $item.on("dragend", function () {
@@ -256,29 +247,28 @@ var GridLayers = (function () {
       e.preventDefault();
       $item.removeClass("tl-layers-item--drag-over");
       var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
-      if (draggedId === layer.id) return;
-      // Build new order
-      var currentIds = layers.map(function (l) { return l.id; });
+      if (draggedId === room.id) return;
+      var currentIds = rooms.map(function (r) { return r.id; });
       var fromIdx = currentIds.indexOf(draggedId);
-      var toIdx = currentIds.indexOf(layer.id);
+      var toIdx = currentIds.indexOf(room.id);
       if (fromIdx === -1 || toIdx === -1) return;
       currentIds.splice(fromIdx, 1);
       currentIds.splice(toIdx, 0, draggedId);
-      GridCore.reorderLayers(currentIds);
+      GridCore.reorderRooms(currentIds);
       var $panel = _$wrap.find(".tl-layers-panel");
       _renderPanelContent($panel);
       if (cfg.editMode === false && typeof cfg.onLayoutChange === "function")
         cfg.onLayoutChange(GridCore.getLayout());
     });
 
-    var isFaIcon = layer.icon && layer.icon.indexOf("fa-") !== -1;
+    var isFaIcon = room.icon && room.icon.indexOf("fa-") !== -1;
     var $icon = jQuery("<div>").addClass("tl-layers-icon");
     if (isFaIcon) {
-      $icon.append(jQuery("<i>").addClass(layer.icon));
-    } else if (layer.icon && /\.(svg|png|jpe?g|gif|webp)/i.test(layer.icon)) {
-      $icon.append(jQuery("<img>").attr("src", layer.icon).css({ width: "18px", height: "18px", "object-fit": "contain" }));
+      $icon.append(jQuery("<i>").addClass(room.icon));
+    } else if (room.icon && /\.(svg|png|jpe?g|gif|webp)/i.test(room.icon)) {
+      $icon.append(jQuery("<img>").attr("src", room.icon).css({ width: "18px", height: "18px", "object-fit": "contain" }));
     } else {
-      $icon.text(layer.icon || "?");
+      $icon.text(room.icon || "?");
     }
 
     $item.append($icon);
@@ -286,7 +276,7 @@ var GridLayers = (function () {
     return $item;
   }
 
-  // ── Add layer form (shown when Add Layout is clicked) ────────
+  // ── Add room form ─────────────────────────────────
 
   function _buildAddForm($panel) {
     var cfg = GridCore.getConfig();
@@ -296,9 +286,9 @@ var GridLayers = (function () {
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
         if (cfg.editMode !== false && GridCore.isEditing()) return;
-        if (typeof cfg.onCreateLayer === "function") {
-          cfg.onCreateLayer(function (details) {
-            _createLayer(details, $panel);
+        if (typeof cfg.onCreateRoom === "function") {
+          cfg.onCreateRoom(function (details) {
+            _createRoom(details, $panel);
           });
           return;
         }
@@ -321,19 +311,17 @@ var GridLayers = (function () {
     var $modal = jQuery("<div>").addClass("tl-modal");
 
     $modal.append(
-      jQuery("<h2>").html('<i class="fa-solid fa-layer-group"></i> New Layout')
+      jQuery("<h2>").html('<i class="fa-solid fa-door-open"></i> New Room')
     );
 
     var $nameField = jQuery("<div>").addClass("tl-field");
     $nameField.append(jQuery("<label>").text("Name"));
-    var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Layout name", maxlength: 30 });
+    var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Room name", maxlength: 30 });
     $nameField.append($nameInput);
 
-    // Icon field with picker grid
     var $iconField = jQuery("<div>").addClass("tl-field");
     $iconField.append(jQuery("<label>").text("Icon"));
 
-    // Preview of selected icon
     var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
     $iconPreview.text("?");
     $iconField.append($iconPreview);
@@ -350,7 +338,6 @@ var GridLayers = (function () {
       }
     }
 
-    // Icon grid
     if (icons.length) {
       var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
       jQuery.each(icons, function (_, ico) {
@@ -377,7 +364,6 @@ var GridLayers = (function () {
       $iconField.append($grid);
     }
 
-    // Text input fallback
     var $textInput = null;
     if (allowText) {
       var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
@@ -401,14 +387,14 @@ var GridLayers = (function () {
     var $cancel = jQuery("<button>").addClass("tl-btn tl-btn-cancel").text("Cancel")
       .on("click", function () { $overlay.remove(); });
 
-    var $create = jQuery("<button>").addClass("tl-btn tl-btn-primary").text("Add Layout")
+    var $create = jQuery("<button>").addClass("tl-btn tl-btn-primary").text("Add Room")
       .on("click", function () {
         var labelVal = jQuery.trim($nameInput.val());
         if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
         $nameInput.removeClass("tl-input-error");
         var iconVal = _selectedIcon || labelVal.charAt(0).toUpperCase();
         $overlay.remove();
-        _createLayer({ label: labelVal, icon: iconVal }, $panel);
+        _createRoom({ label: labelVal, icon: iconVal }, $panel);
       });
 
     $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
@@ -424,24 +410,24 @@ var GridLayers = (function () {
     setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
 
-  function _createLayer(details, $panel) {
-    var label = details.label || "Layout";
-    var layer = {
-      id: "layer-" + Date.now(),
+  function _createRoom(details, $panel) {
+    var label = details.label || "Room";
+    var room = {
+      id: "room-" + Date.now(),
       label: label,
       icon: details.icon || label.charAt(0).toUpperCase(),
       tables: [],
     };
-    GridCore.addLayer(layer);
-    GridCore.switchLayer(layer.id);
+    GridCore.addRoom(room);
+    GridCore.switchRoom(room.id);
     _rebuildGrid();
     if ($panel) _renderPanelContent($panel);
     var cfg = GridCore.getConfig();
-    if (typeof cfg.onLayerChange === "function")
-      cfg.onLayerChange(layer, []);
+    if (typeof cfg.onRoomChange === "function")
+      cfg.onRoomChange(room, []);
   }
 
-  // ── Grid rebuild on layer switch ──────────────────
+  // ── Grid rebuild on room switch ───────────────────
 
   function _rebuildGrid() {
     jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());

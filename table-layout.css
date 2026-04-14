@@ -441,6 +441,164 @@
     color: var(--tl-surface-alt);
 }
 
+/* ── Browser-Style Layer Tabs ── */
+.tl-tab-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0;
+    scrollbar-width: none;
+}
+
+.tl-tab-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.tl-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 10px 10px 0 0;
+    background: transparent;
+    color: var(--tl-surface-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    min-width: 60px;
+    max-width: 160px;
+    position: relative;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.tl-tab:hover {
+    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
+    color: var(--tl-surface-alt);
+}
+
+.tl-tab--active {
+    background: #fff;
+    color: var(--tl-surface-alt);
+    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.tl-tab--active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    background: var(--tl-primary);
+    border-radius: 2px 2px 0 0;
+}
+
+.tl-tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.tl-tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--tl-surface-subtle);
+    font-size: 0.65rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s, color 0.12s;
+    padding: 0;
+    line-height: 1;
+}
+
+.tl-tab:hover .tl-tab-close,
+.tl-tab--active .tl-tab-close {
+    opacity: 1;
+}
+
+.tl-tab-close:hover {
+    background: color-mix(in srgb, var(--tl-danger) 12%, transparent);
+    color: var(--tl-danger);
+}
+
+.tl-tab-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1.5px dashed var(--tl-surface-subtle);
+    background: transparent;
+    color: var(--tl-surface-subtle);
+    font-size: 0.75rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 4px;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.tl-tab-add:hover {
+    border-color: var(--tl-primary);
+    color: var(--tl-primary);
+    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
+}
+
+.tl-tab--dragging {
+    opacity: 0.4;
+}
+
+.tl-tab--drag-over {
+    background: color-mix(in srgb, var(--tl-primary) 12%, transparent);
+}
+
+.tl-tab-rename-input {
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--tl-surface-alt);
+    border: 1.5px solid var(--tl-primary);
+    border-radius: 5px;
+    padding: 2px 6px;
+    width: 80px;
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tl-primary) 15%, transparent);
+}
+
+/* ── Toolbar Right Section ── */
+.tl-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* ── Edit-mode locks for tabs ── */
+.tl-edit-mode .tl-tab:not(.tl-tab--active) {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tl-edit-mode .tl-tab-add {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
 /* ── Shape Tool Buttons ── */
 .tl-shape-tool-btn {
     display: flex;
@@ -930,7 +1088,7 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   LAYER SWITCHER
+   ROOM SWITCHER
    ───────────────────────────────────────────────────────────── */
 .tl-layers-wrap {
     position: absolute;
