@@ -285,7 +285,7 @@ var GridLayers = (function () {
       .addClass("tl-layers-add-submit")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
-        if (cfg.editMode !== false && GridCore.isEditing()) return;
+        if (cfg.editMode !== false && !GridCore.isEditing()) return;
         if (typeof cfg.onCreateRoom === "function") {
           cfg.onCreateRoom(function (details) {
             _createRoom(details, $panel);

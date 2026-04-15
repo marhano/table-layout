@@ -41,13 +41,13 @@ var GridToolbar = (function () {
         e.stopPropagation();
         _toggleIconPicker();
       });
-      $right.append(_$layoutIcon);
+      // $right.append(_$layoutIcon);
 
       _$layoutName = jQuery("<span>")
         .addClass("tl-toolbar-layout-name")
         .text(activeRoom ? activeRoom.label : "")
         .on("click", function () { _startNameEdit(); });
-      $right.append(_$layoutName);
+      // $right.append(_$layoutName);
 
       GridEvents.on("room:switched", function (room) {
         _refreshRoomDisplay(room);
@@ -90,6 +90,8 @@ var GridToolbar = (function () {
         .attr({ "data-layer-id": layer.id, "draggable": "true" });
 
       var $label = jQuery("<span>").addClass("tl-tab-label").text(layer.label);
+      var $icon = _buildIconBadge(layer);
+      $tab.append($icon);
       $tab.append($label);
 
       // Close button (only if more than 1 layer)
@@ -162,7 +164,7 @@ var GridToolbar = (function () {
       .attr("title", "Add Layer")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
-        if (cfg.editMode !== false && GridCore.isEditing()) return;
+        if (cfg.editMode !== false && !GridCore.isEditing()) return;
         if (typeof cfg.onCreateLayer === "function") {
           cfg.onCreateLayer(function (details) {
             _createNewLayer(details);
