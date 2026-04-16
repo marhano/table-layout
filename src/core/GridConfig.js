@@ -59,7 +59,7 @@ var GridConfig = (function () {
 
     statusColors: {
       ordering: "#3b82f6",
-      payment: "#e94560",
+      forpayment: "#e94560",
       paid: "#16a34a",
       unoccupied: "#6b7280",
     },

@@ -95,7 +95,7 @@ var GridToolbar = (function () {
       $tab.append($label);
 
       // Close button (only if more than 1 layer)
-      if (layers.length > 1) {
+      if (layers.length > 1 && cfg.realTime === false && GridCore.isEditing()) {
         var $close = jQuery("<span>")
           .addClass("tl-tab-close")
           .html("&times;")
@@ -161,7 +161,7 @@ var GridToolbar = (function () {
     // Add tab button
     var $addTab = jQuery("<div>")
       .addClass("tl-tab-add")
-      .attr("title", "Add Layer")
+      .attr("title", "Add Floor")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
         if (cfg.realTime === false && !GridCore.isEditing()) return;
@@ -171,7 +171,7 @@ var GridToolbar = (function () {
           });
           return;
         }
-        _createNewLayer({ label: "Layer " + (layers.length + 1) });
+        _createNewLayer({ label: "Floor " + (layers.length + 1) });
       });
     _$tabBar.append($addTab);
   }
@@ -202,9 +202,9 @@ var GridToolbar = (function () {
   }
 
   function _createNewLayer(details) {
-    var label = (details && details.label) || "Layer";
+    var label = (details && details.label) || "Floor";
     var layer = {
-      id: "layer-" + Date.now(),
+      id: "floor-" + Date.now(),
       label: label,
       rooms: [{
         id: "room-" + Date.now(),

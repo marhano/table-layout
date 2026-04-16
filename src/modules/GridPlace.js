@@ -90,8 +90,63 @@ var GridPlace = (function () {
     _pending = placement;
     var cfg = GridCore.getConfig();
     var shapeDef = (cfg.shapes || {})[placement.shape] || {};
-    var nextName =
-      (cfg.newTable.namePrefix || "Table") + " " + GridCore.getCounter();
+    var nextName = (cfg.newTable.namePrefix || "Table") + " " + GridCore.getCounter();
+    var defaultTables = [];
+    var tablesLoading = false;
+    var tablesPromise = null;
+    var $tablesWrap = jQuery('<div>').css({position:'relative',display:'block',width:'100%'});
+    var $search = jQuery('<input type="text" placeholder="Search tables...">').css({width:'100%',marginBottom:'4px',boxSizing:'border-box'});
+    var $select = jQuery('<select>').css({width:'100%'});
+    var $spinner = jQuery('<span class="tl-spinner"></span>').css({
+      display: 'none',
+      position: 'absolute',
+      right: '10px',
+      top: '8px',
+      width: '18px',
+      height: '18px',
+      'z-index': 2
+    });
+    $tablesWrap.append($search, $select, $spinner);
+    // Helper to update select options
+    function updateTableOptions(tables) {
+      $select.empty();
+      var filter = $search.val() ? $search.val().toLowerCase() : '';
+      tables.filter(function(t) {
+        return !filter || t.TableName.toLowerCase().includes(filter);
+      }).forEach(function (t, i) {
+        const allLayers = GridCore.getAllLayersLayout();
+        if(allLayers.some(layer => layer.rooms.some(room => room.tables.some(tbl => tbl.id === t.TableId)))) return; // Skip tables already in any room
+        $select.append(
+          jQuery('<option>')
+            .val(i)
+            .text(t.TableName + " (" + t.Capacity + " seats)")
+        );
+      });
+      if (tablesLoading) {
+        $spinner.show();
+      } else {
+        $spinner.hide();
+      }
+    }
+
+    $search.on('input', function() {
+      updateTableOptions(defaultTables);
+    });
+
+    if (typeof cfg.newTable.tables === 'function') {
+      tablesLoading = true;
+      updateTableOptions([]);
+      $spinner.show();
+      tablesPromise = Promise.resolve(cfg.newTable.tables());
+      tablesPromise.then(function (result) {
+        tablesLoading = false;
+        defaultTables = result || [];
+        updateTableOptions(defaultTables);
+      });
+    } else if (Array.isArray(cfg.newTable.tables)) {
+      defaultTables = cfg.newTable.tables;
+      updateTableOptions(defaultTables);
+    }
 
     // ── Custom modal hook ─────────────────────────
     if (typeof cfg.onCreateTable === "function") {
@@ -139,14 +194,19 @@ var GridPlace = (function () {
       ),
     );
 
+    // Add select field for tables (always show, may be loading)
+    $modal.append(_field("Copy from existing table", $tablesWrap));
+
+    // $modal.append(jQuery("<hr>"));
+
     var $name = jQuery("<input>")
       .attr({ type: "text", placeholder: "Table name", maxlength: 30 })
       .val(nextName);
-    $modal.append(_field("Name", $name));
+    // $modal.append(_field("Name", $name));
 
-    var $seats = jQuery("<input>")
-      .attr({ type: "number", min: 1, max: 50 })
-      .val(cfg.newTable.defaultSeats || 4);
+    // var $seats = jQuery("<input>")
+    //   .attr({ type: "number", min: 1, max: 50 })
+    //   .val(cfg.newTable.defaultSeats || 4);
     var $status = jQuery("<select>");
     jQuery.each(cfg.statusColors, function (s) {
       $status.append(
@@ -163,11 +223,11 @@ var GridPlace = (function () {
       $modal.find(".tl-modal-preview").css("background", newColor);
     });
 
-    $modal.append(
-      jQuery("<div>")
-        .addClass("tl-field-row")
-        .append(_field("Seats", $seats), _field("Status", $status)),
-    );
+    // $modal.append(
+    //   jQuery("<div>")
+    //     .addClass("tl-field-row")
+    //     .append(_field("Seats", $seats), _field("Status", $status)),
+    // );
 
     var $err = jQuery("<p>")
       .addClass("tl-error")
@@ -186,16 +246,15 @@ var GridPlace = (function () {
       .addClass("tl-btn tl-btn-primary")
       .text("Create Table")
       .on("click", function () {
-        var name = jQuery.trim($name.val());
-        if (!name) {
-          $err.show();
-          return;
-        }
+
         $err.hide();
+        var table = defaultTables[$select.val()];
+
         _commit({
-          name: name,
-          seats: parseInt($seats.val()) || 4,
-          status: $status.val(),
+          id: table ? table.TableId : null,
+          name: table ? table.TableName : $name.val() || nextName,
+          seats: parseInt(table ? table.Capacity : $seats.val()) || 4,
+          status: table ? table.Status.toLowerCase() : $status.val(),
         });
         $overlay.remove();
       });
@@ -228,7 +287,7 @@ var GridPlace = (function () {
     var cfg = GridCore.getConfig();
 
     var newTable = {
-      id: "T" + Date.now(),
+      id: details.id || "T" + Date.now(),
       name: details.name,
       seats: details.seats,
       status: details.status,

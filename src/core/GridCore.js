@@ -199,6 +199,7 @@ var GridCore = (function () {
 
   function getActiveRoom() {
     var layer = getActiveLayer();
+    _saveCurrentTables();
     if (!layer) return null;
     return layer.rooms.find(function (r) { return r.id === _activeRoomId; }) || null;
   }
@@ -288,7 +289,10 @@ var GridCore = (function () {
 
   // ── Edit mode ─────────────────────────────────────
 
-  function isEditing() { return _editMode; }
+  function isEditing() {
+    if (_cfg && _cfg.mode === 'edit') return true;
+    return _editMode;
+  }
 
   function enterEditMode() {
     if (_editMode) return;
