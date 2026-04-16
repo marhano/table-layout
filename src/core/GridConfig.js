@@ -11,11 +11,14 @@ var GridConfig = (function () {
     gap: 8,
     cellSize: 70,
     draggable: true,
-    editMode: true,
+    // realTime: false means editMode: true
+    realTime: false,
     trashZone: true,
     swapAnimation: true,
     showSizeBadge: true,
     showHint: false,
+    mode: 'edit', // 'edit' or 'view' — view mode hides all controls and drag handles, for a clean presentation layer
+    realTime: false,
 
     theme: {
       // Primary accent — buttons, active states, focus rings, layer switcher

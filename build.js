@@ -45,4 +45,16 @@ console.log(
 // CSS — copy from src
 var css = fs.readFileSync("./table-layout.css", "utf8");
 fs.writeFileSync("./dist/table-layout.css", css, "utf8");
+console.log("\u2705 CSS → dist/table-layout.css");
+
+// --- Copy to MVC project static assets ---
+var mvcDir = "C:/Users/marjan.carullo/source/repos/OmniBusiness/OmniBusiness/wwwroot/libs/table-layout/";
+try {
+  fs.mkdirSync(mvcDir, { recursive: true });
+  fs.copyFileSync("./dist/table-layout.js", path.join(mvcDir, "table-layout.js"));
+  fs.copyFileSync("./dist/table-layout.css", path.join(mvcDir, "table-layout.css"));
+  console.log("\u2705 Copied to MVC: " + mvcDir);
+} catch (e) {
+  console.error("\u26A0\uFE0F Failed to copy to MVC project:", e.message);
+}
 console.log("✅ CSS → dist/table-layout.css");

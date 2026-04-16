@@ -101,7 +101,7 @@ var GridToolbar = (function () {
           .html("&times;")
           .on("click", function (e) {
             e.stopPropagation();
-            if (cfg.editMode !== false && !GridCore.isEditing()) return;
+            if (cfg.realTime === false && !GridCore.isEditing()) return;
             _confirmDeleteLayer(layer);
           });
         $tab.append($close);
@@ -110,14 +110,14 @@ var GridToolbar = (function () {
       // Click to switch
       $tab.on("click", function () {
         if (isActive) return;
-        if (cfg.editMode !== false && GridCore.isEditing()) return;
+        if (cfg.realTime === false && GridCore.isEditing()) return;
         GridCore.switchLayer(layer.id);
         _rebuildGrid();
       });
 
       // Drag-to-reorder
       $tab.on("dragstart", function (e) {
-        if (cfg.editMode !== false && !GridCore.isEditing()) { e.preventDefault(); return; }
+        if (cfg.realTime === false && !GridCore.isEditing()) { e.preventDefault(); return; }
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", layer.id);
         $tab.addClass("tl-tab--dragging");
@@ -151,7 +151,7 @@ var GridToolbar = (function () {
       // Double-click to rename (only in edit mode)
       $tab.on("dblclick", function (e) {
         e.stopPropagation();
-        if (cfg.editMode === false || !GridCore.isEditing()) return;
+        if (cfg.realTime !== false || !GridCore.isEditing()) return;
         _startTabRename($tab, layer);
       });
 
@@ -164,7 +164,7 @@ var GridToolbar = (function () {
       .attr("title", "Add Layer")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
-        if (cfg.editMode !== false && !GridCore.isEditing()) return;
+        if (cfg.realTime === false && !GridCore.isEditing()) return;
         if (typeof cfg.onCreateLayer === "function") {
           cfg.onCreateLayer(function (details) {
             _createNewLayer(details);
@@ -263,7 +263,7 @@ var GridToolbar = (function () {
   function _startNameEdit() {
     var cfg = GridCore.getConfig();
     if (!cfg.layers || !cfg.layers.length) return;
-    if (cfg.editMode === false || !GridCore.isEditing()) return;
+    if (cfg.realTime !== false || !GridCore.isEditing()) return;
     if (_nameEditing) return;
     var room = GridCore.getActiveRoom();
     if (!room) return;
@@ -285,7 +285,7 @@ var GridToolbar = (function () {
       if (val && val !== room.label) {
         GridCore.updateRoomMeta(room.id, { label: val });
         var c = GridCore.getConfig();
-        if (typeof c.onRoomChange === "function" && !GridCore.isEditing())
+        if (cfg.realTime !== false || !GridCore.isEditing()) return;
           c.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
       }
       var updatedRoom = GridCore.getActiveRoom();
@@ -316,7 +316,7 @@ var GridToolbar = (function () {
 
   function _toggleIconPicker() {
     var cfg = GridCore.getConfig();
-    if (cfg.editMode === false || !GridCore.isEditing()) return;
+    if (cfg.realTime !== false || !GridCore.isEditing()) return;
     if (_$iconPicker) {
       _closeIconPicker();
     } else {
@@ -497,7 +497,7 @@ var GridToolbar = (function () {
 
     var cfg = GridCore.getConfig();
 
-    if (cfg.editMode !== false && GridCore.isEditing()) {
+    if (cfg.realTime === false && GridCore.isEditing()) {
       _$editSection.append(
         jQuery("<button>")
           .addClass("tl-toolbar-btn tl-toolbar-btn--save")
@@ -550,8 +550,8 @@ var GridToolbar = (function () {
 
     var $popup = jQuery("<div>").addClass("tl-settings-popup");
 
-    // Edit option (only when editMode is enabled and not currently editing)
-    if (cfg.editMode !== false && !GridCore.isEditing()) {
+    // Edit option (only when realTime is false and not currently editing)
+    if (cfg.realTime === false && !GridCore.isEditing()) {
       var $editOpt = jQuery("<button>")
         .addClass("tl-settings-option")
         .html('<i class="fa-solid fa-pen"></i><span>Edit Layout</span>')
@@ -647,7 +647,7 @@ var GridToolbar = (function () {
 
   function toggle(key) {
     var cfg = GridCore.getConfig();
-    if (cfg.editMode !== false && !GridCore.isEditing()) return;
+    if (cfg.realTime === false && !GridCore.isEditing()) return;
     if (_activeTool === key) {
       deactivate();
     } else {

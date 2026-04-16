@@ -73,7 +73,7 @@ var TableLayout = (function () {
     }
 
     $container.append($wrapper);
-    if (cfg.editMode !== false) $container.addClass("tl-view-mode");
+    if (cfg.realTime === false) $container.addClass("tl-view-mode");
 
     // ── Apply initial zoom ─────────────────────────
     GridZoom.applyZoom(cfg.zoom.initial || 1, true);
@@ -93,7 +93,7 @@ var TableLayout = (function () {
         cfg.onLayerChange(layer, GridCore.getAllLayersLayout());
     });
     GridEvents.on("layer:updated", function (layer) {
-      if (typeof cfg.onLayerChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
+      if (typeof cfg.onLayerChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
         cfg.onLayerChange(layer, GridCore.getAllLayersLayout());
     });
     GridEvents.on("layer:deleted", function (removed) {
@@ -112,7 +112,7 @@ var TableLayout = (function () {
         cfg.onRoomChange(room, GridCore.getLayout());
     });
     GridEvents.on("room:updated", function (room) {
-      if (typeof cfg.onRoomChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
+      if (typeof cfg.onRoomChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
         cfg.onRoomChange(room, GridCore.getLayout());
     });
     GridEvents.on("room:deleted", function (removed) {
