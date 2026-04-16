@@ -2,6 +2,7 @@ var GridPlace = (function () {
   var _start = null;
   var _$ghost = null;
   var _pending = null;
+  var _placeTouchMoveHandler = null;
 
   function bind() {
     var cfg = GridCore.getConfig();
@@ -70,6 +71,48 @@ var GridPlace = (function () {
     jQuery(document).on("keydown.tl", function (e) {
       if (e.key === "Escape" && GridToolbar.getActive())
         GridToolbar.deactivate();
+    });
+
+    // ── Touch: shape drawing ───────────────────────
+    jQuery(document).on("touchstart.tl", gridSel + " .tl-cell", function (e) {
+      if (cfg.editMode !== false && !GridCore.isEditing()) return;
+      if (!GridToolbar.getActive()) return;
+      if (e.originalEvent.touches.length !== 1) return;
+      e.preventDefault();
+      var touch = e.originalEvent.touches[0];
+      var $cell = jQuery(document.elementFromPoint(touch.clientX, touch.clientY)).closest(".tl-cell");
+      if (!$cell.length) return;
+      _start = {
+        col: parseInt($cell.data("col")),
+        row: parseInt($cell.data("row")),
+      };
+
+      _placeTouchMoveHandler = function (te) {
+        if (!_start) return;
+        if (te.touches.length !== 1) return;
+        te.preventDefault();
+        var tc = te.touches[0];
+        var end = GridCore.cursorToGrid(tc.clientX, tc.clientY);
+        var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
+        var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
+        _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
+      };
+      document.addEventListener("touchmove", _placeTouchMoveHandler, { passive: false });
+    });
+
+    jQuery(document).on("touchend.tl", function (e) {
+      if (_placeTouchMoveHandler) {
+        document.removeEventListener("touchmove", _placeTouchMoveHandler);
+        _placeTouchMoveHandler = null;
+      }
+      if (!GridToolbar.getActive() || !_start) return;
+      var touch = e.originalEvent.changedTouches[0];
+      var end = GridCore.cursorToGrid(touch.clientX, touch.clientY);
+      var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
+      _removeGhost();
+      _start = null;
+      if (GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null)) return;
+      _showModal(jQuery.extend({}, span, { shape: GridToolbar.getActive() }));
     });
   }
 
@@ -310,6 +353,10 @@ var GridPlace = (function () {
   }
 
   function unbind() {
+    if (_placeTouchMoveHandler) {
+      document.removeEventListener("touchmove", _placeTouchMoveHandler);
+      _placeTouchMoveHandler = null;
+    }
     jQuery(document).off(".tl");
   }
 

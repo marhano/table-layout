@@ -261,6 +261,55 @@ var GridLayers = (function () {
         cfg.onLayoutChange(GridCore.getLayout());
     });
 
+    // Touch-to-reorder events (long press)
+    var _touchTimer = null;
+    var _touchDragging = false;
+    $item.on("touchstart", function (e) {
+      if (cfg.editMode !== false && !GridCore.isEditing()) return;
+      if (e.originalEvent.touches.length !== 1) return;
+      _touchDragging = false;
+      _touchTimer = setTimeout(function () {
+        _touchDragging = true;
+        $item.addClass("tl-layers-item--dragging");
+      }, 400);
+    });
+    $item.on("touchmove", function (e) {
+      if (!_touchDragging) { clearTimeout(_touchTimer); return; }
+      e.preventDefault();
+      var touch = e.originalEvent.touches[0];
+      var el = document.elementFromPoint(touch.clientX, touch.clientY);
+      var $target = jQuery(el).closest(".tl-layers-item");
+      _$wrap.find(".tl-layers-item--drag-over").removeClass("tl-layers-item--drag-over");
+      if ($target.length && $target.data("layer-id") !== layer.id) {
+        $target.addClass("tl-layers-item--drag-over");
+      }
+    });
+    $item.on("touchend touchcancel", function (e) {
+      clearTimeout(_touchTimer);
+      if (!_touchDragging) return;
+      _touchDragging = false;
+      $item.removeClass("tl-layers-item--dragging");
+      _$wrap.find(".tl-layers-item--drag-over").removeClass("tl-layers-item--drag-over");
+
+      var touch = e.originalEvent.changedTouches[0];
+      var el = document.elementFromPoint(touch.clientX, touch.clientY);
+      var $target = jQuery(el).closest(".tl-layers-item");
+      var targetId = $target.data("layer-id");
+      if (!targetId || targetId === layer.id) return;
+
+      var currentIds = layers.map(function (l) { return l.id; });
+      var fromIdx = currentIds.indexOf(layer.id);
+      var toIdx = currentIds.indexOf(targetId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      currentIds.splice(fromIdx, 1);
+      currentIds.splice(toIdx, 0, layer.id);
+      GridCore.reorderLayers(currentIds);
+      var $panel = _$wrap.find(".tl-layers-panel");
+      _renderPanelContent($panel);
+      if (cfg.editMode === false && typeof cfg.onLayoutChange === "function")
+        cfg.onLayoutChange(GridCore.getLayout());
+    });
+
     var isFaIcon = room.icon && room.icon.indexOf("fa-") !== -1;
     var $icon = jQuery("<div>").addClass("tl-layers-icon");
     if (isFaIcon) {
