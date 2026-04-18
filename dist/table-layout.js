@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-18T15:55:29.493Z
+ * Built: 2026-04-18T16:08:41.416Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -64,6 +64,7 @@ var GridConfig = (function () {
       mouseWheel: true,
       showControls: true,
       labelReset: "↺",
+      fullscreen: true,
     },
 
     statusColors: {
@@ -1883,9 +1884,11 @@ var GridZoom = (function () {
 
     var $label = jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_zoom));
 
+    var $fullscreen = GridFullscreen.buildButton();
+
     return jQuery("<div>")
       .addClass("tl-zoom-controls")
-      .append($reset, $slider, $label);
+      .append($reset, $fullscreen, $slider, $label);
   }
 
   function applyZoom(level, silent) {
@@ -1970,6 +1973,90 @@ var GridZoom = (function () {
     applyZoom: applyZoom,
     bindWheelZoom: bindWheelZoom,
     getZoom: getZoom,
+  };
+})();
+
+
+/* src/modules/GridFullscreen.js */
+var GridFullscreen = (function () {
+  var _isFullscreen = false;
+
+  function buildButton() {
+    var cfg = GridCore.getConfig();
+    var zCfg = cfg.zoom || {};
+    if (!zCfg.fullscreen) return jQuery();
+
+    var $btn = jQuery("<button>")
+      .addClass("tl-zoom-btn tl-zoom-btn-fullscreen")
+      .attr("title", "Toggle fullscreen")
+      .html('<i class="fa-solid fa-expand"></i>')
+      .on("click", function () { toggle(); });
+
+    return $btn;
+  }
+
+  function toggle() {
+    if (_isFullscreen) {
+      exit();
+    } else {
+      enter();
+    }
+  }
+
+  function enter() {
+    var $root = jQuery(".tl-root").first();
+    if (!$root.length) return;
+
+    $root.addClass("tl-fullscreen");
+    _isFullscreen = true;
+
+    // Update button icon
+    $root.find(".tl-zoom-btn-fullscreen i")
+      .removeClass("fa-expand")
+      .addClass("fa-compress");
+
+    // Recalculate zoom area
+    GridZoom.applyZoom(GridZoom.getZoom(), true);
+    GridEvents.emit("fullscreen:changed", true);
+  }
+
+  function exit() {
+    var $root = jQuery(".tl-root").first();
+    if (!$root.length) return;
+
+    $root.removeClass("tl-fullscreen");
+    _isFullscreen = false;
+
+    // Update button icon
+    $root.find(".tl-zoom-btn-fullscreen i")
+      .removeClass("fa-compress")
+      .addClass("fa-expand");
+
+    // Recalculate zoom area
+    GridZoom.applyZoom(GridZoom.getZoom(), true);
+    GridEvents.emit("fullscreen:changed", false);
+  }
+
+  function bind() {
+    // Exit fullscreen on Escape key
+    jQuery(document).on("keydown.tl-fullscreen", function (e) {
+      if (e.key === "Escape" && _isFullscreen) {
+        exit();
+      }
+    });
+  }
+
+  function isFullscreen() {
+    return _isFullscreen;
+  }
+
+  return {
+    buildButton: buildButton,
+    bind: bind,
+    toggle: toggle,
+    enter: enter,
+    exit: exit,
+    isFullscreen: isFullscreen,
   };
 })();
 
@@ -3449,6 +3536,7 @@ var TableLayout = (function () {
     GridDrag.bind();
     GridPlace.bind();
     GridZoom.bindWheelZoom();
+    GridFullscreen.bind();
 
     // ── Wire internal events to user callbacks ─────
     GridEvents.on("zoom:changed", function (level) {

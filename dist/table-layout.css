@@ -998,6 +998,42 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
+   FULLSCREEN MODE
+   ───────────────────────────────────────────────────────────── */
+.tl-fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999;
+    background: var(--tl-grid-bg, #fff);
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    overflow: hidden;
+}
+
+.tl-fullscreen .tl-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.tl-fullscreen .tl-canvas-wrap {
+    flex: 1;
+    height: 0;
+    overflow: auto;
+}
+
+.tl-fullscreen .tl-canvas {
+    height: 100% !important;
+    min-height: 100%;
+    border-radius: 0;
+    border: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
    ZOOM AREA
    ───────────────────────────────────────────────────────────── */
 .tl-zoom-area {

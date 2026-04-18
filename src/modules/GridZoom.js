@@ -27,9 +27,11 @@ var GridZoom = (function () {
 
     var $label = jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_zoom));
 
+    var $fullscreen = GridFullscreen.buildButton();
+
     return jQuery("<div>")
       .addClass("tl-zoom-controls")
-      .append($reset, $slider, $label);
+      .append($reset, $fullscreen, $slider, $label);
   }
 
   function applyZoom(level, silent) {

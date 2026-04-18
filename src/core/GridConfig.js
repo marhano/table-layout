@@ -55,6 +55,7 @@ var GridConfig = (function () {
       mouseWheel: true,
       showControls: true,
       labelReset: "↺",
+      fullscreen: true,
     },
 
     statusColors: {

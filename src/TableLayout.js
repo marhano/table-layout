@@ -88,6 +88,7 @@ var TableLayout = (function () {
     GridDrag.bind();
     GridPlace.bind();
     GridZoom.bindWheelZoom();
+    GridFullscreen.bind();
 
     // ── Wire internal events to user callbacks ─────
     GridEvents.on("zoom:changed", function (level) {

@@ -9,6 +9,7 @@ var files = [
   "src/modules/GridLayers.js",
   "src/modules/GridToolbar.js",
   "src/modules/GridZoom.js",
+  "src/modules/GridFullscreen.js",
   "src/modules/GridDrag.js",
   "src/modules/GridPlace.js",
   "src/modules/GridRooms.js",
