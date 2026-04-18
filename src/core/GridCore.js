@@ -357,8 +357,10 @@ var GridCore = (function () {
     if (col + colSpan - 1 > _cfg.columns) return true;
     if (row + rowSpan - 1 > _cfg.rows) return true;
 
+    var excludeIds = Array.isArray(excludeId) ? excludeId : (excludeId ? [excludeId] : []);
+
     return _tables.some(function (t) {
-      if (t.id === excludeId) return false;
+      if (excludeIds.indexOf(t.id) !== -1) return false;
       return !(
         col + colSpan <= t.col ||
         col >= t.col + t.colSpan ||

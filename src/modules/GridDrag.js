@@ -22,6 +22,7 @@ var GridDrag = (function () {
         var cfg = GridCore.getConfig();
         if (cfg.realTime === false && !GridCore.isEditing()) return;
         if (GridToolbar.getActive()) return;
+        if (GridMultiSelect.isActive()) return;
         _dragId = jQuery(this).data("table-id");
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", String(_dragId));
@@ -49,6 +50,7 @@ var GridDrag = (function () {
     jQuery(document).on("touchstart.tl", gridSel + " .tl-table-card", function (e) {
       if (cfg.editMode !== false && !GridCore.isEditing()) return;
       if (GridToolbar.getActive()) return;
+      if (GridMultiSelect.isActive()) return;
       if (e.originalEvent.touches.length !== 1) return;
       var touch = e.originalEvent.touches[0];
       _touchDragId = jQuery(this).data("table-id");

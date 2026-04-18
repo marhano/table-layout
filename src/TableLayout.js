@@ -88,6 +88,7 @@ var TableLayout = (function () {
     GridDrag.bind();
     GridResize.bind();
     GridEdit.bind();
+    GridMultiSelect.bind();
     GridPlace.bind();
     GridZoom.bindWheelZoom();
     GridFullscreen.bind();

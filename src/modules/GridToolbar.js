@@ -440,6 +440,24 @@ var GridToolbar = (function () {
     var cfg = GridCore.getConfig();
     var $panel = jQuery("<div>").addClass("tl-shape-panel");
 
+    // Multiselect tool
+    var $mselBtn = jQuery("<button>")
+      .addClass("tl-shape-tool-btn tl-multiselect-tool-btn")
+      .attr({ title: "Multi-select" })
+      .append(jQuery("<i>").addClass("fa-solid fa-object-group"))
+      .on("click", function () {
+        if (GridMultiSelect.isActive()) {
+          GridMultiSelect.deactivate();
+        } else {
+          deactivate();
+          GridMultiSelect.activate();
+        }
+      });
+    $panel.append($mselBtn);
+
+    // Divider
+    $panel.append(jQuery("<div>").addClass("tl-shape-panel-divider"));
+
     jQuery.each(cfg.shapes, function (key, shape) {
       if (shape === false) return;
       $panel.append(_buildShapeBtn(key, shape));
@@ -461,6 +479,7 @@ var GridToolbar = (function () {
   function toggle(key) {
     var cfg = GridCore.getConfig();
     if (cfg.realTime === false && !GridCore.isEditing()) return;
+    GridMultiSelect.deactivate();
     if (_activeTool === key) {
       deactivate();
     } else {

@@ -884,6 +884,40 @@
     pointer-events: none;
 }
 
+/* ── Shape Panel Divider ── */
+.tl-shape-panel-divider {
+    width: 24px;
+    height: 1.5px;
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 1px;
+    margin: 2px 0;
+}
+
+/* ── Multi-select ── */
+.tl-table-card.tl-selected {
+    outline: 2.5px solid var(--tl-primary);
+    outline-offset: 2px;
+    filter: brightness(1.05);
+}
+
+.tl-multiselect-mode .tl-table-card {
+    cursor: pointer;
+}
+
+.tl-multiselect-mode .tl-table-card:hover {
+    outline: 2px dashed var(--tl-primary-light);
+    outline-offset: 2px;
+}
+
+.tl-marquee-rect {
+    position: absolute;
+    border: 2px dashed var(--tl-primary);
+    background: rgba(var(--tl-primary-rgb, 59, 130, 246), 0.08);
+    pointer-events: none;
+    z-index: 9999;
+    border-radius: 2px;
+}
+
 /* ─────────────────────────────────────────────────────────────
    CANVAS
    ───────────────────────────────────────────────────────────── */
