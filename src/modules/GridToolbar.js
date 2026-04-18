@@ -333,18 +333,20 @@ var GridToolbar = (function () {
       );
     }
 
-    // Settings gear — always visible when layers exist
-    var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
-    var $settingsBtn = jQuery("<button>")
-      .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
-      .attr("title", "Room settings")
-      .html('<i class="fa-solid fa-gear"></i>')
-      .on("click", function (e) {
-        e.stopPropagation();
-        _toggleSettingsPopup($settingsWrap);
-      });
-    $settingsWrap.append($settingsBtn);
-    _$editSection.append($settingsWrap);
+    // Settings gear — visible only when NOT in edit mode
+    if (cfg.realTime !== false || !GridCore.isEditing()) {
+      var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
+      var $settingsBtn = jQuery("<button>")
+        .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
+        .attr("title", "Room settings")
+        .html('<i class="fa-solid fa-gear"></i>')
+        .on("click", function (e) {
+          e.stopPropagation();
+          _toggleSettingsPopup($settingsWrap);
+        });
+      $settingsWrap.append($settingsBtn);
+      _$editSection.append($settingsWrap);
+    }
   }
 
   // ── Settings popup (manages rooms) ────────────────
@@ -381,19 +383,6 @@ var GridToolbar = (function () {
           _handleEdit();
         });
       $popup.append($editOpt);
-    }
-
-    // Delete room option (only if more than 1 room in active layer)
-    var rooms = GridCore.getRooms();
-    if (rooms.length > 1 && room) {
-      var $deleteOpt = jQuery("<button>")
-        .addClass("tl-settings-option tl-settings-option--danger")
-        .html('<i class="fa-solid fa-trash-can"></i><span>Delete Room</span>')
-        .on("click", function () {
-          _closeSettingsPopup();
-          _confirmDeleteRoom(room);
-        });
-      $popup.append($deleteOpt);
     }
 
     $anchor.append($popup);

@@ -86,6 +86,8 @@ var TableLayout = (function () {
 
     // ── Bind modules ───────────────────────────────
     GridDrag.bind();
+    GridResize.bind();
+    GridEdit.bind();
     GridPlace.bind();
     GridZoom.bindWheelZoom();
     GridFullscreen.bind();

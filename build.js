@@ -11,6 +11,8 @@ var files = [
   "src/modules/GridZoom.js",
   "src/modules/GridFullscreen.js",
   "src/modules/GridDrag.js",
+  "src/modules/GridResize.js",
+  "src/modules/GridEdit.js",
   "src/modules/GridPlace.js",
   "src/modules/GridRooms.js",
   "src/TableLayout.js",

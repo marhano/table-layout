@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-18T16:15:16.399Z
+ * Built: 2026-04-18T17:08:22.396Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -905,6 +905,35 @@ var GridRender = (function () {
       );
     }
 
+    // ── Edit button (visible in edit mode) ──
+    if (cfg.realTime !== false || GridCore.isEditing()) {
+      var tableId = t.id;
+      var $editBtn = jQuery("<button>")
+        .addClass(ns("table-edit-btn"))
+        .attr({ title: "Edit table", draggable: "false", type: "button" })
+        .html('<i class="fa-solid fa-pen"></i>')
+        .on("click", function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          if (cfg.realTime === false && !GridCore.isEditing()) return;
+          var tbl = GridCore.tableById(tableId);
+          if (tbl) GridEdit.showEditModal(tbl);
+        });
+      $card.append($editBtn);
+    }
+
+    // ── Resize handles (visible in edit mode) ──
+    if (cfg.realTime !== false || GridCore.isEditing()) {
+      var handles = ["e", "s", "se"];
+      handles.forEach(function (dir) {
+        $card.append(
+          jQuery("<div>")
+            .addClass(ns("resize-handle") + " " + ns("resize-" + dir))
+            .attr({ "data-resize-dir": dir, draggable: "false" })
+        );
+      });
+    }
+
     return $card;
   }
 
@@ -1667,18 +1696,20 @@ var GridToolbar = (function () {
       );
     }
 
-    // Settings gear — always visible when layers exist
-    var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
-    var $settingsBtn = jQuery("<button>")
-      .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
-      .attr("title", "Room settings")
-      .html('<i class="fa-solid fa-gear"></i>')
-      .on("click", function (e) {
-        e.stopPropagation();
-        _toggleSettingsPopup($settingsWrap);
-      });
-    $settingsWrap.append($settingsBtn);
-    _$editSection.append($settingsWrap);
+    // Settings gear — visible only when NOT in edit mode
+    if (cfg.realTime !== false || !GridCore.isEditing()) {
+      var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
+      var $settingsBtn = jQuery("<button>")
+        .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
+        .attr("title", "Room settings")
+        .html('<i class="fa-solid fa-gear"></i>')
+        .on("click", function (e) {
+          e.stopPropagation();
+          _toggleSettingsPopup($settingsWrap);
+        });
+      $settingsWrap.append($settingsBtn);
+      _$editSection.append($settingsWrap);
+    }
   }
 
   // ── Settings popup (manages rooms) ────────────────
@@ -1715,19 +1746,6 @@ var GridToolbar = (function () {
           _handleEdit();
         });
       $popup.append($editOpt);
-    }
-
-    // Delete room option (only if more than 1 room in active layer)
-    var rooms = GridCore.getRooms();
-    if (rooms.length > 1 && room) {
-      var $deleteOpt = jQuery("<button>")
-        .addClass("tl-settings-option tl-settings-option--danger")
-        .html('<i class="fa-solid fa-trash-can"></i><span>Delete Room</span>')
-        .on("click", function () {
-          _closeSettingsPopup();
-          _confirmDeleteRoom(room);
-        });
-      $popup.append($deleteOpt);
     }
 
     $anchor.append($popup);
@@ -2330,6 +2348,372 @@ var GridDrag = (function () {
   }
 
   return { bind: bind, unbind: unbind };
+})();
+
+
+/* src/modules/GridResize.js */
+/**
+ * GridResize.js
+ * Resize handles for placed table cards.
+ * Supports mouse and touch dragging on east, south, and south-east handles.
+ */
+var GridResize = (function () {
+  var _resizing = false;
+  var _tableId = null;
+  var _dir = null;
+  var _origTable = null;
+  var _$ghost = null;
+  var _touchMoveHandler = null;
+
+  function bind() {
+    var cfg = GridCore.getConfig();
+    var gridSel = "#" + cfg.containerId + " .tl-layout-grid";
+
+    // ── Mouse ──────────────────────────────────────
+    jQuery(document).on("mousedown.tl-resize", gridSel + " .tl-resize-handle", function (e) {
+      if (cfg.realTime === false && !GridCore.isEditing()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      _startResize(jQuery(this), e.clientX, e.clientY);
+      jQuery(document).on("mousemove.tl-resize", _onMouseMove);
+      jQuery(document).on("mouseup.tl-resize", _onMouseUp);
+    });
+
+    // ── Touch ──────────────────────────────────────
+    jQuery(document).on("touchstart.tl-resize", gridSel + " .tl-resize-handle", function (e) {
+      if (cfg.realTime === false && !GridCore.isEditing()) return;
+      if (e.originalEvent.touches.length !== 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var touch = e.originalEvent.touches[0];
+      _startResize(jQuery(this), touch.clientX, touch.clientY);
+
+      _touchMoveHandler = function (te) {
+        if (te.touches.length !== 1) return;
+        te.preventDefault();
+        _onMove(te.touches[0].clientX, te.touches[0].clientY);
+      };
+      document.addEventListener("touchmove", _touchMoveHandler, { passive: false });
+      jQuery(document).on("touchend.tl-resize", _onTouchEnd);
+    });
+  }
+
+  function _startResize($handle, clientX, clientY) {
+    _dir = $handle.attr("data-resize-dir");
+    var $card = $handle.closest(".tl-table-card");
+    _tableId = $card.data("table-id");
+    var t = GridCore.tableById(_tableId);
+    if (!t) return;
+    _origTable = { col: t.col, row: t.row, colSpan: t.colSpan, rowSpan: t.rowSpan };
+    _resizing = true;
+    $card.addClass("tl-resizing");
+  }
+
+  function _onMouseMove(e) {
+    if (!_resizing) return;
+    _onMove(e.clientX, e.clientY);
+  }
+
+  function _onMove(clientX, clientY) {
+    if (!_resizing || !_tableId) return;
+    var cfg = GridCore.getConfig();
+    var t = GridCore.tableById(_tableId);
+    if (!t) return;
+
+    var pos = GridCore.cursorToGrid(clientX, clientY);
+    var newColSpan = _origTable.colSpan;
+    var newRowSpan = _origTable.rowSpan;
+    var shapeDef = (cfg.shapes || {})[t.shape] || {};
+    var minC = shapeDef.minCols || 1;
+    var minR = shapeDef.minRows || 1;
+
+    if (_dir === "e" || _dir === "se") {
+      newColSpan = Math.max(minC, pos.col - _origTable.col + 1);
+    }
+    if (_dir === "s" || _dir === "se") {
+      newRowSpan = Math.max(minR, pos.row - _origTable.row + 1);
+    }
+
+    if (shapeDef.preferSquare) {
+      var side = Math.max(newColSpan, newRowSpan);
+      newColSpan = side;
+      newRowSpan = side;
+    }
+
+    var bad = GridCore.hasCollision(_origTable.col, _origTable.row, newColSpan, newRowSpan, _tableId);
+    _showGhost(_origTable.col, _origTable.row, newColSpan, newRowSpan, bad);
+  }
+
+  function _onMouseUp() {
+    jQuery(document).off("mousemove.tl-resize mouseup.tl-resize");
+    _endResize();
+  }
+
+  function _onTouchEnd() {
+    if (_touchMoveHandler) {
+      document.removeEventListener("touchmove", _touchMoveHandler);
+      _touchMoveHandler = null;
+    }
+    jQuery(document).off("touchend.tl-resize");
+    _endResize();
+  }
+
+  function _endResize() {
+    if (!_resizing || !_tableId) { _resizing = false; return; }
+    var cfg = GridCore.getConfig();
+
+    // Read ghost span values
+    var newColSpan = _origTable.colSpan;
+    var newRowSpan = _origTable.rowSpan;
+    if (_$ghost) {
+      var gs = _$ghost.css("grid-column");
+      var gr = _$ghost.css("grid-row");
+      // Parse "col / span N" format
+      var cm = gs && gs.match(/span\s+(\d+)/);
+      var rm = gr && gr.match(/span\s+(\d+)/);
+      if (cm) newColSpan = parseInt(cm[1], 10);
+      if (rm) newRowSpan = parseInt(rm[1], 10);
+    }
+
+    _removeGhost();
+    jQuery(".tl-resizing").removeClass("tl-resizing");
+
+    if (!GridCore.hasCollision(_origTable.col, _origTable.row, newColSpan, newRowSpan, _tableId)) {
+      GridCore.updateTable(_tableId, { colSpan: newColSpan, rowSpan: newRowSpan });
+      var t = GridCore.tableById(_tableId);
+      jQuery('[data-table-id="' + _tableId + '"]').replaceWith(GridRender.buildTableCard(t));
+
+      if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
+        cfg.onLayoutChange(GridCore.getLayout());
+    }
+
+    _resizing = false;
+    _tableId = null;
+    _dir = null;
+    _origTable = null;
+  }
+
+  function _showGhost(col, row, colSpan, rowSpan, invalid) {
+    _removeGhost();
+    _$ghost = GridRender.buildPlaceGhost(col, row, colSpan, rowSpan, invalid);
+    jQuery(".tl-layout-grid").append(_$ghost);
+  }
+
+  function _removeGhost() {
+    if (_$ghost) { _$ghost.remove(); _$ghost = null; }
+  }
+
+  function unbind() {
+    if (_touchMoveHandler) {
+      document.removeEventListener("touchmove", _touchMoveHandler);
+      _touchMoveHandler = null;
+    }
+    jQuery(document).off(".tl-resize");
+    _resizing = false;
+    _tableId = null;
+  }
+
+  return { bind: bind, unbind: unbind };
+})();
+
+
+/* src/modules/GridEdit.js */
+/**
+ * GridEdit.js
+ * Edit modal for placed table cards.
+ * Opens when the edit button on a table card is clicked.
+ * Allows changing shape and reassigning to a different table.
+ */
+var GridEdit = (function () {
+
+  function bind() {
+    // Click handlers are bound directly on edit buttons in GridRender.buildTableCard
+  }
+
+  function showEditModal(t) {
+    _showEditModal(t);
+  }
+
+  function _showEditModal(table) {
+    var cfg = GridCore.getConfig();
+    var currentShape = table.shape || "square";
+    var statusColor = cfg.statusColors[table.status] || "#6b7280";
+    var styles = GridCore.getShapeStyles(currentShape);
+
+    // ── Table source (same pattern as GridPlace._showModal) ──
+    var defaultTables = [];
+    var tablesLoading = false;
+    var $tablesWrap = jQuery('<div>').css({ position: 'relative', display: 'block', width: '100%' });
+    var $search = jQuery('<input type="text" placeholder="Search tables...">').css({ width: '100%', marginBottom: '4px', boxSizing: 'border-box' });
+    var $select = jQuery('<select>').css({ width: '100%' });
+    var $spinner = jQuery('<span class="tl-spinner"></span>').css({
+      display: 'none', position: 'absolute', right: '10px', top: '8px',
+      width: '18px', height: '18px', 'z-index': 2
+    });
+    $tablesWrap.append($search, $select, $spinner);
+
+    function updateTableOptions(tables) {
+      $select.empty();
+      var filter = $search.val() ? $search.val().toLowerCase() : '';
+      // Add current table as first option
+      $select.append(
+        jQuery('<option>').val('__current__')
+          .text(table.name + " (" + table.seats + " seats) — current")
+      );
+      tables.filter(function (t) {
+        return !filter || t.TableName.toLowerCase().includes(filter);
+      }).forEach(function (t, i) {
+        // Skip tables already in any room (except current table)
+        if (t.TableId === table.id) return;
+        var allLayers = GridCore.getAllLayersLayout();
+        if (allLayers.some(function (layer) {
+          return layer.rooms.some(function (room) {
+            return room.tables.some(function (tbl) { return tbl.id === t.TableId; });
+          });
+        })) return;
+        $select.append(
+          jQuery('<option>').val(i).text(t.TableName + " (" + t.Capacity + " seats)")
+        );
+      });
+      if (tablesLoading) { $spinner.show(); } else { $spinner.hide(); }
+    }
+
+    $search.on('input', function () { updateTableOptions(defaultTables); });
+
+    if (typeof cfg.newTable.tables === 'function') {
+      tablesLoading = true;
+      updateTableOptions([]);
+      $spinner.show();
+      Promise.resolve(cfg.newTable.tables()).then(function (result) {
+        tablesLoading = false;
+        defaultTables = result || [];
+        updateTableOptions(defaultTables);
+      });
+    } else if (Array.isArray(cfg.newTable.tables)) {
+      defaultTables = cfg.newTable.tables;
+      updateTableOptions(defaultTables);
+    }
+
+    // ── Shape selector ──
+    var $shapeWrap = jQuery('<div>').addClass('tl-edit-shapes');
+    jQuery.each(cfg.shapes, function (key, shapeDef) {
+      var $btn = jQuery('<button>')
+        .addClass('tl-edit-shape-btn')
+        .toggleClass('tl-edit-shape-btn--active', key === currentShape)
+        .attr({ 'data-shape': key, title: shapeDef.label, type: 'button' })
+        .html('<i class="' + shapeDef.icon + '"></i>')
+        .on('click', function () {
+          $shapeWrap.find('.tl-edit-shape-btn--active').removeClass('tl-edit-shape-btn--active');
+          jQuery(this).addClass('tl-edit-shape-btn--active');
+          currentShape = key;
+          // Update preview
+          var newStyles = GridCore.getShapeStyles(key);
+          $modal.find('.tl-modal-preview').css({
+            'clip-path': newStyles.clipPath,
+            'border-radius': newStyles.borderRadius
+          });
+        });
+      $shapeWrap.append($btn);
+    });
+
+    // ── Build modal ──
+    var $overlay = jQuery('<div>').addClass('tl-overlay');
+    var $modal = jQuery('<div>').addClass('tl-modal');
+
+    $modal.append(
+      jQuery('<h2>').append(
+        jQuery('<span>').addClass('tl-modal-preview').css({
+          background: statusColor,
+          'clip-path': styles.clipPath,
+          'border-radius': styles.borderRadius
+        }),
+        jQuery('<span>').text('Edit Table')
+      )
+    );
+
+    // Shape field
+    $modal.append(_field('Shape', $shapeWrap));
+
+    // Table select field
+    $modal.append(_field('Change table', $tablesWrap));
+
+    var $err = jQuery('<p>').addClass('tl-error').text('Error saving changes.');
+    $modal.append($err);
+
+    var $cancel = jQuery('<button>')
+      .addClass('tl-btn tl-btn-cancel')
+      .text('Cancel')
+      .on('click', function () { $overlay.remove(); });
+
+    var $save = jQuery('<button>')
+      .addClass('tl-btn tl-btn-primary')
+      .text('Save')
+      .on('click', function () {
+        $err.hide();
+        var selectedVal = $select.val();
+        var props = { shape: currentShape };
+
+        if (selectedVal !== '__current__') {
+          var selTable = defaultTables[parseInt(selectedVal, 10)];
+          if (selTable) {
+            props.id = selTable.TableId;
+            props.name = selTable.TableName;
+            props.seats = parseInt(selTable.Capacity, 10) || table.seats;
+            props.status = selTable.Status ? selTable.Status.toLowerCase() : table.status;
+          }
+        }
+
+        // Enforce shape min dimensions
+        var shapeDef = (cfg.shapes || {})[currentShape] || {};
+        var minC = shapeDef.minCols || 1;
+        var minR = shapeDef.minRows || 1;
+        var newColSpan = Math.max(minC, table.colSpan);
+        var newRowSpan = Math.max(minR, table.rowSpan);
+        if (shapeDef.preferSquare) {
+          var side = Math.max(newColSpan, newRowSpan);
+          newColSpan = side;
+          newRowSpan = side;
+        }
+        props.colSpan = newColSpan;
+        props.rowSpan = newRowSpan;
+
+        if (GridCore.hasCollision(table.col, table.row, newColSpan, newRowSpan, table.id)) {
+          $err.text('Not enough space for this shape.').show();
+          return;
+        }
+
+        var origId = table.id;
+        GridCore.updateTable(origId, props);
+        var updated = GridCore.tableById(props.id || origId);
+        jQuery('[data-table-id="' + origId + '"]').replaceWith(GridRender.buildTableCard(updated));
+
+        if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
+          cfg.onLayoutChange(GridCore.getLayout());
+
+        $overlay.remove();
+      });
+
+    $modal.append(
+      jQuery('<div>').addClass('tl-modal-actions').append($cancel, $save)
+    );
+    $overlay.append($modal);
+    jQuery('.tl-root').first().append($overlay);
+
+    $overlay.on('click', function (e) {
+      if (jQuery(e.target).is($overlay)) $overlay.remove();
+    });
+  }
+
+  function _field(label, $input) {
+    return jQuery('<div>').addClass('tl-field')
+      .append(jQuery('<label>').text(label), $input);
+  }
+
+  function unbind() {
+    jQuery(document).off(".tl-edit");
+  }
+
+  return { bind: bind, unbind: unbind, showEditModal: showEditModal };
 })();
 
 
@@ -3518,6 +3902,8 @@ var TableLayout = (function () {
 
     // ── Bind modules ───────────────────────────────
     GridDrag.bind();
+    GridResize.bind();
+    GridEdit.bind();
     GridPlace.bind();
     GridZoom.bindWheelZoom();
     GridFullscreen.bind();

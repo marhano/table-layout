@@ -119,6 +119,35 @@ var GridRender = (function () {
       );
     }
 
+    // ── Edit button (visible in edit mode) ──
+    if (cfg.realTime !== false || GridCore.isEditing()) {
+      var tableId = t.id;
+      var $editBtn = jQuery("<button>")
+        .addClass(ns("table-edit-btn"))
+        .attr({ title: "Edit table", draggable: "false", type: "button" })
+        .html('<i class="fa-solid fa-pen"></i>')
+        .on("click", function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          if (cfg.realTime === false && !GridCore.isEditing()) return;
+          var tbl = GridCore.tableById(tableId);
+          if (tbl) GridEdit.showEditModal(tbl);
+        });
+      $card.append($editBtn);
+    }
+
+    // ── Resize handles (visible in edit mode) ──
+    if (cfg.realTime !== false || GridCore.isEditing()) {
+      var handles = ["e", "s", "se"];
+      handles.forEach(function (dir) {
+        $card.append(
+          jQuery("<div>")
+            .addClass(ns("resize-handle") + " " + ns("resize-" + dir))
+            .attr({ "data-resize-dir": dir, draggable: "false" })
+        );
+      });
+    }
+
     return $card;
   }
 

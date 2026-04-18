@@ -1145,6 +1145,143 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
+   RESIZE HANDLES
+   ───────────────────────────────────────────────────────────── */
+.tl-resize-handle {
+    position: absolute;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.tl-table-card:hover .tl-resize-handle,
+.tl-resizing .tl-resize-handle {
+    opacity: 1;
+}
+
+/* East (right edge) */
+.tl-resize-e {
+    right: -4px;
+    top: 20%;
+    bottom: 20%;
+    width: 8px;
+    cursor: e-resize;
+    border-radius: 0 4px 4px 0;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* South (bottom edge) */
+.tl-resize-s {
+    bottom: -4px;
+    left: 20%;
+    right: 20%;
+    height: 8px;
+    cursor: s-resize;
+    border-radius: 0 0 4px 4px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* South-east (corner) */
+.tl-resize-se {
+    right: -4px;
+    bottom: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: se-resize;
+    border-radius: 0 0 4px 0;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.tl-resize-se::after {
+    content: "";
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid rgba(0, 0, 0, 0.35);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.35);
+}
+
+.tl-resizing {
+    cursor: se-resize;
+    z-index: 10;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EDIT BUTTON
+   ───────────────────────────────────────────────────────────── */
+.tl-table-edit-btn {
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.85);
+    color: #334155;
+    font-size: 0.62rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s;
+    z-index: 5;
+    padding: 0;
+    line-height: 1;
+}
+
+.tl-table-card:hover .tl-table-edit-btn {
+    opacity: 1;
+}
+
+.tl-table-edit-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: scale(1.1);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EDIT MODAL — SHAPE SELECTOR
+   ───────────────────────────────────────────────────────────── */
+.tl-edit-shapes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tl-edit-shape-btn {
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--tl-border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--tl-surface-alt);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    padding: 0;
+}
+
+.tl-edit-shape-btn:hover {
+    border-color: var(--tl-primary-light);
+    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
+}
+
+.tl-edit-shape-btn--active {
+    border-color: var(--tl-primary);
+    background: color-mix(in srgb, var(--tl-primary) 12%, transparent);
+    color: var(--tl-primary);
+}
+
+/* ─────────────────────────────────────────────────────────────
    GHOSTS
    ───────────────────────────────────────────────────────────── */
 
