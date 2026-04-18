@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-18T17:30:52.375Z
+ * Built: 2026-04-18T17:44:51.900Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -1768,6 +1768,7 @@ var GridToolbar = (function () {
 
   function _handleSave() {
     deactivate();
+    GridMultiSelect.deactivate();
     GridCore.saveEdit();
     _renderEditControls();
     GridLayers.renderTabs();
@@ -1783,6 +1784,7 @@ var GridToolbar = (function () {
 
   function _handleDiscard() {
     deactivate();
+    GridMultiSelect.deactivate();
     GridCore.discardEdit();
     _renderEditControls();
     GridLayers.renderTabs();
@@ -2659,14 +2661,15 @@ var GridMultiSelect = (function () {
 
       e.preventDefault();
 
-      // Clear previous selection
+      // Clear previous selection and any stale marquee
       _clearSelection();
+      _removeMarquee();
 
       // Start marquee
       _marquee = true;
       _marqueeStart = { x: e.clientX, y: e.clientY };
 
-      // Create the visual marquee element inside the grid
+      // Create the visual marquee element inside the grid (hidden until drag)
       var gridEl = jQuery(gridSel)[0];
       var gridRect = gridEl.getBoundingClientRect();
       _$marquee = jQuery("<div class='tl-marquee-rect'></div>");
@@ -2674,16 +2677,21 @@ var GridMultiSelect = (function () {
         left: (e.clientX - gridRect.left) + "px",
         top: (e.clientY - gridRect.top) + "px",
         width: "0px",
-        height: "0px"
+        height: "0px",
+        display: "none"
       });
       jQuery(gridSel).append(_$marquee);
 
       jQuery(document).on("mousemove.tl-msel-marquee", function (ev) {
-        if (!_marquee) return;
+        if (!_marquee || !_$marquee) return;
         var x1 = Math.min(_marqueeStart.x, ev.clientX);
         var y1 = Math.min(_marqueeStart.y, ev.clientY);
         var x2 = Math.max(_marqueeStart.x, ev.clientX);
         var y2 = Math.max(_marqueeStart.y, ev.clientY);
+        // Show marquee only once drag exceeds a small threshold
+        if (x2 - x1 > 3 || y2 - y1 > 3) {
+          _$marquee.css("display", "");
+        }
         var gr = gridEl.getBoundingClientRect();
         _$marquee.css({
           left: (x1 - gr.left) + "px",

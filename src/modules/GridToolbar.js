@@ -403,6 +403,7 @@ var GridToolbar = (function () {
 
   function _handleSave() {
     deactivate();
+    GridMultiSelect.deactivate();
     GridCore.saveEdit();
     _renderEditControls();
     GridLayers.renderTabs();
@@ -418,6 +419,7 @@ var GridToolbar = (function () {
 
   function _handleDiscard() {
     deactivate();
+    GridMultiSelect.deactivate();
     GridCore.discardEdit();
     _renderEditControls();
     GridLayers.renderTabs();
