@@ -125,6 +125,8 @@ var GridConfig = (function () {
     // Each layer is a tab in the toolbar; each room is an entry in the room switcher panel
     layers: null,
     roomPreview: true,
+    // Room switcher style: 'genshin' (floating side panel) or 'simple' (browser tab bar)
+    roomStyle: "genshin",
 
     // Icon picker for layer icons
     // icon types: "fa" (FontAwesome class), "svg" (URL/path to SVG), "img" (URL/path to PNG/JPG/etc.)

@@ -6,11 +6,12 @@ var files = [
   "src/core/GridEvents.js",
   "src/core/GridCore.js",
   "src/modules/GridRender.js",
+  "src/modules/GridLayers.js",
   "src/modules/GridToolbar.js",
   "src/modules/GridZoom.js",
   "src/modules/GridDrag.js",
   "src/modules/GridPlace.js",
-  "src/modules/GridLayers.js",
+  "src/modules/GridRooms.js",
   "src/TableLayout.js",
 ];
 

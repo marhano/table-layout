@@ -56,7 +56,13 @@ var TableLayout = (function () {
     $canvasWrap.append(GridZoom.buildControls());
     $canvasWrap.append(GridToolbar.buildShapePanel());
     if (cfg.trashZone) $canvasWrap.append(GridRender.buildTrashZone());
-    if (cfg.layers && cfg.layers.length) $canvasWrap.append(GridLayers.build());
+    if (cfg.layers && cfg.layers.length) {
+      var $rooms = GridRooms.build();
+      if ($rooms) $canvasWrap.append($rooms);
+      if (cfg.roomStyle === "simple") {
+        $canvasWrap.append(GridRooms.buildTabBar());
+      }
+    }
 
     $wrapper.append(GridToolbar.build());
     $wrapper.append($canvasWrap);
