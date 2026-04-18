@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-18T16:08:41.416Z
+ * Built: 2026-04-18T16:15:16.399Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -591,15 +591,12 @@ var GridCore = (function () {
 
   function enterEditMode() {
     if (_editMode) return;
-    var roomMeta = null;
-    var room = getActiveRoom();
-    if (room) roomMeta = { label: room.label, icon: room.icon };
+    _saveCurrentTables();
     _snapshot = {
       tables: jQuery.extend(true, [], _tables),
-      roomMeta: roomMeta,
-      roomOrder: getRooms().map(function (r) { return r.id; }),
-      layerLabel: getActiveLayer() ? getActiveLayer().label : null,
-      layerOrder: _layers ? _layers.map(function (l) { return l.id; }) : null,
+      layers: _layers ? jQuery.extend(true, [], _layers) : null,
+      activeLayerId: _activeLayerId,
+      activeRoomId: _activeRoomId,
     };
     _editMode = true;
     GridEvents.emit("edit:enter");
@@ -615,25 +612,12 @@ var GridCore = (function () {
 
   function discardEdit() {
     if (!_editMode) return;
+    // Restore full layers tree
+    _layers = _snapshot.layers ? jQuery.extend(true, [], _snapshot.layers) : null;
+    _activeLayerId = _snapshot.activeLayerId;
+    _activeRoomId = _snapshot.activeRoomId;
     _tables = jQuery.extend(true, [], _snapshot.tables);
     _counter = _tables.length + 1;
-    if (_snapshot.roomMeta) {
-      var room = getActiveRoom();
-      if (room) {
-        room.label = _snapshot.roomMeta.label;
-        room.icon = _snapshot.roomMeta.icon;
-      }
-    }
-    if (_snapshot.layerLabel) {
-      var layer = getActiveLayer();
-      if (layer) layer.label = _snapshot.layerLabel;
-    }
-    if (_snapshot.roomOrder) {
-      reorderRooms(_snapshot.roomOrder);
-    }
-    if (_snapshot.layerOrder && _layers) {
-      reorderLayers(_snapshot.layerOrder);
-    }
     _snapshot = null;
     _editMode = false;
     var restoredRoom = getActiveRoom();
