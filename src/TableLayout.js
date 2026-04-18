@@ -73,7 +73,7 @@ var TableLayout = (function () {
     }
 
     $container.append($wrapper);
-    if (cfg.editMode !== false) $container.addClass("tl-view-mode");
+    if (cfg.realTime === false) $container.addClass("tl-view-mode");
 
     // ── Apply initial zoom ─────────────────────────
     GridZoom.applyZoom(cfg.zoom.initial || 1, true);
@@ -87,23 +87,43 @@ var TableLayout = (function () {
     GridEvents.on("zoom:changed", function (level) {
       if (typeof cfg.onZoom === "function") cfg.onZoom(level);
     });
+    // Layer events
     GridEvents.on("layer:switched", function (layer) {
       if (typeof cfg.onLayerChange === "function")
-        cfg.onLayerChange(layer, GridCore.getLayout());
+        cfg.onLayerChange(layer, GridCore.getAllLayersLayout());
     });
     GridEvents.on("layer:updated", function (layer) {
-      if (typeof cfg.onLayerChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
-        cfg.onLayerChange(layer, GridCore.getLayout());
+      if (typeof cfg.onLayerChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
+        cfg.onLayerChange(layer, GridCore.getAllLayersLayout());
     });
     GridEvents.on("layer:deleted", function (removed) {
       if (typeof cfg.onLayerDelete === "function")
         cfg.onLayerDelete(removed);
       if (typeof cfg.onLayerChange === "function")
-        cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getLayout());
+        cfg.onLayerChange(GridCore.getActiveLayer(), GridCore.getAllLayersLayout());
     });
     GridEvents.on("layer:reordered", function (layers) {
       if (typeof cfg.onLayerReorder === "function")
         cfg.onLayerReorder(layers);
+    });
+    // Room events
+    GridEvents.on("room:switched", function (room) {
+      if (typeof cfg.onRoomChange === "function")
+        cfg.onRoomChange(room, GridCore.getLayout());
+    });
+    GridEvents.on("room:updated", function (room) {
+      if (typeof cfg.onRoomChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
+        cfg.onRoomChange(room, GridCore.getLayout());
+    });
+    GridEvents.on("room:deleted", function (removed) {
+      if (typeof cfg.onRoomDelete === "function")
+        cfg.onRoomDelete(removed);
+      if (typeof cfg.onRoomChange === "function")
+        cfg.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
+    });
+    GridEvents.on("room:reordered", function (rooms) {
+      if (typeof cfg.onRoomReorder === "function")
+        cfg.onRoomReorder(rooms);
     });
 
     // ── Return instance API ────────────────────────
@@ -150,11 +170,16 @@ var TableLayout = (function () {
       },
       addLayer: function (details) {
         var label = (details && details.label) || "Layout";
+        var firstRoom = {
+          id: "room-" + Date.now(),
+          label: (details && details.roomLabel) || "Room 1",
+          icon: (details && details.roomIcon) || "fa-solid fa-utensils",
+          tables: [],
+        };
         var layer = {
           id: "layer-" + Date.now(),
           label: label,
-          icon: (details && details.icon) || label.charAt(0).toUpperCase(),
-          tables: (details && details.tables) || [],
+          rooms: (details && details.rooms) || [firstRoom],
         };
         GridCore.addLayer(layer);
         return layer;
@@ -167,6 +192,36 @@ var TableLayout = (function () {
       },
       getAllLayersLayout: function () {
         return GridCore.getAllLayersLayout();
+      },
+
+      // Rooms
+      getRooms: function () {
+        return GridCore.getRooms();
+      },
+      getActiveRoom: function () {
+        return GridCore.getActiveRoom();
+      },
+      switchRoom: function (id) {
+        if (GridCore.switchRoom(id)) {
+          jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+        }
+      },
+      addRoom: function (details) {
+        var label = (details && details.label) || "Room";
+        var room = {
+          id: "room-" + Date.now(),
+          label: label,
+          icon: (details && details.icon) || label.charAt(0).toUpperCase(),
+          tables: (details && details.tables) || [],
+        };
+        GridCore.addRoom(room);
+        return room;
+      },
+      deleteRoom: function (id) {
+        return GridCore.deleteRoom(id);
+      },
+      reorderRooms: function (orderedIds) {
+        return GridCore.reorderRooms(orderedIds);
       },
 
       // Edit mode

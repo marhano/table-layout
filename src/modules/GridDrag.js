@@ -20,7 +20,7 @@ var GridDrag = (function () {
       gridSel + " .tl-table-card",
       function (e) {
         var cfg = GridCore.getConfig();
-        if (cfg.editMode !== false && !GridCore.isEditing()) return;
+        if (cfg.realTime === false && !GridCore.isEditing()) return;
         if (GridToolbar.getActive()) return;
         _dragId = jQuery(this).data("table-id");
         e.originalEvent.dataTransfer.effectAllowed = "move";
@@ -182,7 +182,7 @@ var GridDrag = (function () {
       _removeGhost();
       jQuery('[data-table-id="' + id + '"]').remove();
       GridCore.removeTable(id);
-      if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing())) cfg.onLayoutChange(GridCore.getLayout());
+      if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing())) cfg.onLayoutChange(GridCore.getLayout());
     });
 
     jQuery(document).on("dragover.tl", gridSel, function (e) {
@@ -252,7 +252,7 @@ var GridDrag = (function () {
 
       if (typeof cfg.onSwap === "function")
         cfg.onSwap(from, { col: pos.col, row: pos.row }, GridCore.getLayout());
-      if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
+      if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
         cfg.onLayoutChange(GridCore.getLayout());
 
       _dragId = null;

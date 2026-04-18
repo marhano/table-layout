@@ -11,11 +11,14 @@ var GridConfig = (function () {
     gap: 8,
     cellSize: 70,
     draggable: true,
-    editMode: true,
+    // realTime: false means editMode: true
+    realTime: false,
     trashZone: true,
     swapAnimation: true,
     showSizeBadge: true,
     showHint: false,
+    mode: 'edit', // 'edit' or 'view' — view mode hides all controls and drag handles, for a clean presentation layer
+    realTime: false,
 
     theme: {
       // Primary accent — buttons, active states, focus rings, layer switcher
@@ -56,7 +59,7 @@ var GridConfig = (function () {
 
     statusColors: {
       ordering: "#3b82f6",
-      payment: "#e94560",
+      forpayment: "#e94560",
       paid: "#16a34a",
       unoccupied: "#6b7280",
     },
@@ -117,10 +120,11 @@ var GridConfig = (function () {
       namePrefix: "Table",
     },
 
-    // Layer switcher — set to an array of {id, label, icon, tables} to enable
-    // icon can be an FA class string (e.g. "fa-solid fa-utensils") or short text/emoji ("A", "1F")
+    // Layers → Rooms → Tables hierarchy
+    // layers: [{ id, label, rooms: [{ id, label, icon, tables: [] }] }]
+    // Each layer is a tab in the toolbar; each room is an entry in the room switcher panel
     layers: null,
-    layerPreview: true,
+    roomPreview: true,
 
     // Icon picker for layer icons
     // icon types: "fa" (FontAwesome class), "svg" (URL/path to SVG), "img" (URL/path to PNG/JPG/etc.)
@@ -158,10 +162,14 @@ var GridConfig = (function () {
     onZoom: null,
     onTableCreated: null,
     onCreateTable: null,
-    onLayerChange: null, // fn(layer, tables) — fired when active layer changes
-    onLayerDelete: null, // fn(removedLayer) — fired when a layer is deleted
-    onLayerReorder: null, // fn(layers) — fired when layers are reordered
-    onCreateLayer: null, // fn(commit) — override the default add-layer form; call commit({label, icon})
+    onLayerChange: null, // fn(layer) — fired when active layer changes (tab switch)
+    onLayerDelete: null, // fn(removedLayer) — fired when a layer tab is deleted
+    onLayerReorder: null, // fn(layers) — fired when layer tabs are reordered
+    onCreateLayer: null, // fn(commit) — override the default add-layer form; call commit({label})
+    onRoomChange: null, // fn(room, tables) — fired when active room changes
+    onRoomDelete: null, // fn(removedRoom) — fired when a room is deleted
+    onRoomReorder: null, // fn(rooms) — fired when rooms are reordered
+    onCreateRoom: null, // fn(commit) — override the default add-room form; call commit({label, icon})
   };
 
   /**
