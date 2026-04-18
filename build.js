@@ -13,6 +13,7 @@ var files = [
   "src/modules/GridDrag.js",
   "src/modules/GridResize.js",
   "src/modules/GridMultiSelect.js",
+  "src/modules/GridHelp.js",
   "src/modules/GridEdit.js",
   "src/modules/GridPlace.js",
   "src/modules/GridRooms.js",

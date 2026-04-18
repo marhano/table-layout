@@ -347,6 +347,17 @@ var GridToolbar = (function () {
       $settingsWrap.append($settingsBtn);
       _$editSection.append($settingsWrap);
     }
+
+    // Help button — always visible
+    var $helpBtn = jQuery("<button>")
+      .addClass("tl-toolbar-btn tl-toolbar-btn--help")
+      .attr("title", "Help & Tutorial")
+      .html('<i class="fa-solid fa-circle-question"></i>')
+      .on("click", function (e) {
+        e.stopPropagation();
+        GridHelp.show();
+      });
+    _$editSection.append($helpBtn);
   }
 
   // ── Settings popup (manages rooms) ────────────────
