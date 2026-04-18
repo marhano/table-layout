@@ -1686,6 +1686,21 @@
     color: var(--tl-surface-alt);
 }
 
+.tl-help-gif-box {
+    margin-top: 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--tl-border);
+    background: var(--tl-surface-bright);
+}
+
+.tl-help-gif-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
+
 .tl-help-footer {
     display: flex;
     justify-content: flex-end;
