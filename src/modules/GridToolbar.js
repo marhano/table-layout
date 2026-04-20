@@ -435,8 +435,8 @@ var GridToolbar = (function () {
 
     var $popup = jQuery("<div>").addClass("tl-settings-popup");
 
-    // Edit option (only when realTime is false and not currently editing)
-    if (cfg.realTime === false && !GridCore.isEditing()) {
+    // Edit option (only when realTime is false, mode is not 'view', and not currently editing)
+    if (cfg.realTime === false && cfg.mode !== "view" && !GridCore.isEditing()) {
       var $editOpt = jQuery("<button>")
         .addClass("tl-settings-option")
         .html('<i class="fa-solid fa-pen"></i><span>Edit Layout</span>')

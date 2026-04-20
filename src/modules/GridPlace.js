@@ -145,6 +145,7 @@ var GridPlace = (function () {
   }
 
   function _showModal(placement) {
+    var cid = _TL.cid();
     var ctx = _c();
     ctx.pending = placement;
     var cfg = GridCore.getConfig();
@@ -168,19 +169,24 @@ var GridPlace = (function () {
     $tablesWrap.append($search, $select, $spinner);
 
     function updateTableOptions(tables) {
+      _TL.use(cid);
       $select.empty();
       var filter = $search.val() ? $search.val().toLowerCase() : '';
-      tables.filter(function(t) {
-        return !filter || t.TableName.toLowerCase().includes(filter);
-      }).forEach(function (t, i) {
-        const allLayers = GridCore.getAllLayersLayout();
-        if(allLayers.some(layer => layer.rooms.some(room => room.tables.some(tbl => tbl.id === t.TableId)))) return;
+      var allLayers = GridCore.getAllLayersLayout();
+      for (var i = 0; i < tables.length; i++) {
+        var t = tables[i];
+        if (filter && t.TableName.toLowerCase().indexOf(filter) === -1) continue;
+        if (allLayers && allLayers.some(function (layer) {
+          return layer.rooms.some(function (room) {
+            return room.tables.some(function (tbl) { return tbl.id === t.TableId; });
+          });
+        })) continue;
         $select.append(
           jQuery('<option>')
             .val(i)
             .text(t.TableName + " (" + t.Capacity + " seats)")
         );
-      });
+      }
       if (tablesLoading) {
         $spinner.show();
       } else {
@@ -189,6 +195,7 @@ var GridPlace = (function () {
     }
 
     $search.on('input', function() {
+      _TL.use(cid);
       updateTableOptions(defaultTables);
     });
 
@@ -198,6 +205,7 @@ var GridPlace = (function () {
       $spinner.show();
       tablesPromise = Promise.resolve(cfg.newTable.tables());
       tablesPromise.then(function (result) {
+        _TL.use(cid);
         tablesLoading = false;
         defaultTables = result || [];
         updateTableOptions(defaultTables);
@@ -218,6 +226,7 @@ var GridPlace = (function () {
         jQuery.extend({}, placement),
         tableDefaults,
         function (details) {
+          _TL.use(cid);
           _commit(details);
         }
       );
@@ -284,6 +293,7 @@ var GridPlace = (function () {
       .text("Cancel")
       .on("click", function () {
         $overlay.remove();
+        _TL.use(cid);
         var ctx2 = _c();
         if (ctx2) ctx2.pending = null;
       });
@@ -292,6 +302,7 @@ var GridPlace = (function () {
       .addClass("tl-btn tl-btn-primary")
       .text("Create Table")
       .on("click", function () {
+        _TL.use(cid);
         $err.hide();
         var table = defaultTables[$select.val()];
         _commit({
@@ -307,7 +318,7 @@ var GridPlace = (function () {
       jQuery("<div>").addClass("tl-modal-actions").append($cancel, $create),
     );
     $overlay.append($modal);
-    jQuery("#" + _TL.cid()).append($overlay);
+    jQuery("#" + cid).append($overlay);
 
     setTimeout(function () {
       $name.trigger("focus").trigger("select");
@@ -315,6 +326,7 @@ var GridPlace = (function () {
     $overlay.on("click", function (e) {
       if (jQuery(e.target).is($overlay)) {
         $overlay.remove();
+        _TL.use(cid);
         var ctx2 = _c();
         if (ctx2) ctx2.pending = null;
       }

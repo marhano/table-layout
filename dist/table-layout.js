@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-20T07:27:20.338Z
+ * Built: 2026-04-20T08:09:22.983Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -125,34 +125,6 @@ var GridConfig = (function () {
         preferSquare: true,
         clipPath: null,
         borderRadius: "50%",
-      },
-      hexagon: {
-        label: "Hexagon",
-        icon: "fa-solid fa-hexagon",
-        minCols: 3,
-        minRows: 2,
-        preferSquare: false,
-        clipPath:
-          "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
-        borderRadius: "0",
-      },
-      diamond: {
-        label: "Diamond",
-        icon: "fa-regular fa-gem",
-        minCols: 2,
-        minRows: 2,
-        preferSquare: true,
-        clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-        borderRadius: "0",
-      },
-      triangle: {
-        label: "Triangle",
-        icon: "fa-solid fa-triangle",
-        minCols: 2,
-        minRows: 2,
-        preferSquare: true,
-        clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
-        borderRadius: "0",
       },
     },
 
@@ -1106,6 +1078,7 @@ var GridLayers = (function () {
     if (!ctx || !ctx.$tabBar) return;
     ctx.$tabBar.empty();
 
+    var cid = _TL.cid();
     var cfg = GridCore.getConfig();
     var layers = GridCore.getLayers();
     var activeId = GridCore.getActiveLayerId();
@@ -1126,6 +1099,7 @@ var GridLayers = (function () {
           .html("&times;")
           .on("click", function (e) {
             e.stopPropagation();
+            _TL.use(cid);
             if (cfg.realTime === false && !GridCore.isEditing()) return;
             _confirmDeleteLayer(layer);
           });
@@ -1133,6 +1107,7 @@ var GridLayers = (function () {
       }
 
       $tab.on("click", function () {
+        _TL.use(cid);
         if (isActive) return;
         if (cfg.realTime === false && GridCore.isEditing()) return;
         GridCore.switchLayer(layer.id);
@@ -1140,6 +1115,7 @@ var GridLayers = (function () {
       });
 
       $tab.on("dragstart", function (e) {
+        _TL.use(cid);
         if (cfg.realTime === false && !GridCore.isEditing()) { e.preventDefault(); return; }
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", layer.id);
@@ -1159,6 +1135,7 @@ var GridLayers = (function () {
       });
       $tab.on("drop", function (e) {
         e.preventDefault();
+        _TL.use(cid);
         $tab.removeClass("tl-tab--drag-over");
         var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
         if (draggedId === layer.id) return;
@@ -1173,6 +1150,7 @@ var GridLayers = (function () {
 
       $tab.on("dblclick", function (e) {
         e.stopPropagation();
+        _TL.use(cid);
         if (cfg.realTime !== false || !GridCore.isEditing()) return;
         _startTabRename($tab, layer);
       });
@@ -1185,9 +1163,11 @@ var GridLayers = (function () {
       .attr("title", "Add Floor")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
+        _TL.use(cid);
         if (cfg.realTime === false && !GridCore.isEditing()) return;
         if (typeof cfg.onCreateLayer === "function") {
           cfg.onCreateLayer(function (details) {
+            _TL.use(cid);
             _createNewLayer(details);
           });
           return;
@@ -1860,8 +1840,8 @@ var GridToolbar = (function () {
 
     var $popup = jQuery("<div>").addClass("tl-settings-popup");
 
-    // Edit option (only when realTime is false and not currently editing)
-    if (cfg.realTime === false && !GridCore.isEditing()) {
+    // Edit option (only when realTime is false, mode is not 'view', and not currently editing)
+    if (cfg.realTime === false && cfg.mode !== "view" && !GridCore.isEditing()) {
       var $editOpt = jQuery("<button>")
         .addClass("tl-settings-option")
         .html('<i class="fa-solid fa-pen"></i><span>Edit Layout</span>')
@@ -2030,6 +2010,7 @@ var GridZoom = (function () {
     var zCfg = cfg.zoom || {};
     if (!zCfg.enabled || !zCfg.showControls) return jQuery();
 
+    var cid = _TL.cid();
     var min  = zCfg.min  || 0.4;
     var max  = zCfg.max  || 2;
     var step = zCfg.step || 0.1;
@@ -2038,12 +2019,12 @@ var GridZoom = (function () {
       .addClass("tl-zoom-btn tl-zoom-btn-reset")
       .attr("title", "Reset zoom")
       .html(zCfg.labelReset || "↺")
-      .on("click", function () { applyZoom(zCfg.initial || 1); });
+      .on("click", function () { _TL.use(cid); applyZoom(zCfg.initial || 1); });
 
     var $slider = jQuery("<input>")
       .attr({ type: "range", min: min, max: max, step: step, value: _c().zoom })
       .addClass("tl-zoom-slider")
-      .on("input", function () { applyZoom(parseFloat(this.value)); });
+      .on("input", function () { _TL.use(cid); applyZoom(parseFloat(this.value)); });
 
     var $label = jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_c().zoom));
 
@@ -2167,11 +2148,12 @@ var GridFullscreen = (function () {
     var zCfg = cfg.zoom || {};
     if (!zCfg.fullscreen) return jQuery();
 
+    var cid = _TL.cid();
     var $btn = jQuery("<button>")
       .addClass("tl-zoom-btn tl-zoom-btn-fullscreen")
       .attr("title", "Toggle fullscreen")
       .html('<i class="fa-solid fa-expand"></i>')
-      .on("click", function () { toggle(); });
+      .on("click", function () { _TL.use(cid); toggle(); });
 
     return $btn;
   }
@@ -3867,6 +3849,7 @@ var GridPlace = (function () {
   }
 
   function _showModal(placement) {
+    var cid = _TL.cid();
     var ctx = _c();
     ctx.pending = placement;
     var cfg = GridCore.getConfig();
@@ -3890,19 +3873,24 @@ var GridPlace = (function () {
     $tablesWrap.append($search, $select, $spinner);
 
     function updateTableOptions(tables) {
+      _TL.use(cid);
       $select.empty();
       var filter = $search.val() ? $search.val().toLowerCase() : '';
-      tables.filter(function(t) {
-        return !filter || t.TableName.toLowerCase().includes(filter);
-      }).forEach(function (t, i) {
-        const allLayers = GridCore.getAllLayersLayout();
-        if(allLayers.some(layer => layer.rooms.some(room => room.tables.some(tbl => tbl.id === t.TableId)))) return;
+      var allLayers = GridCore.getAllLayersLayout();
+      for (var i = 0; i < tables.length; i++) {
+        var t = tables[i];
+        if (filter && t.TableName.toLowerCase().indexOf(filter) === -1) continue;
+        if (allLayers && allLayers.some(function (layer) {
+          return layer.rooms.some(function (room) {
+            return room.tables.some(function (tbl) { return tbl.id === t.TableId; });
+          });
+        })) continue;
         $select.append(
           jQuery('<option>')
             .val(i)
             .text(t.TableName + " (" + t.Capacity + " seats)")
         );
-      });
+      }
       if (tablesLoading) {
         $spinner.show();
       } else {
@@ -3911,6 +3899,7 @@ var GridPlace = (function () {
     }
 
     $search.on('input', function() {
+      _TL.use(cid);
       updateTableOptions(defaultTables);
     });
 
@@ -3920,6 +3909,7 @@ var GridPlace = (function () {
       $spinner.show();
       tablesPromise = Promise.resolve(cfg.newTable.tables());
       tablesPromise.then(function (result) {
+        _TL.use(cid);
         tablesLoading = false;
         defaultTables = result || [];
         updateTableOptions(defaultTables);
@@ -3940,6 +3930,7 @@ var GridPlace = (function () {
         jQuery.extend({}, placement),
         tableDefaults,
         function (details) {
+          _TL.use(cid);
           _commit(details);
         }
       );
@@ -4006,6 +3997,7 @@ var GridPlace = (function () {
       .text("Cancel")
       .on("click", function () {
         $overlay.remove();
+        _TL.use(cid);
         var ctx2 = _c();
         if (ctx2) ctx2.pending = null;
       });
@@ -4014,6 +4006,7 @@ var GridPlace = (function () {
       .addClass("tl-btn tl-btn-primary")
       .text("Create Table")
       .on("click", function () {
+        _TL.use(cid);
         $err.hide();
         var table = defaultTables[$select.val()];
         _commit({
@@ -4029,7 +4022,7 @@ var GridPlace = (function () {
       jQuery("<div>").addClass("tl-modal-actions").append($cancel, $create),
     );
     $overlay.append($modal);
-    jQuery("#" + _TL.cid()).append($overlay);
+    jQuery("#" + cid).append($overlay);
 
     setTimeout(function () {
       $name.trigger("focus").trigger("select");
@@ -4037,6 +4030,7 @@ var GridPlace = (function () {
     $overlay.on("click", function (e) {
       if (jQuery(e.target).is($overlay)) {
         $overlay.remove();
+        _TL.use(cid);
         var ctx2 = _c();
         if (ctx2) ctx2.pending = null;
       }
@@ -4941,6 +4935,7 @@ var TableLayout = (function () {
     GridCore.init(cfg);
     GridZoom.init(cfg.zoom.initial || 1);
     GridFullscreen.init();
+    GridLayers.init();
     GridToolbar.init();
     GridDrag.init();
     GridResize.init();
@@ -5201,6 +5196,7 @@ var TableLayout = (function () {
         GridPlace.unbind();
         GridZoom.destroy();
         GridFullscreen.destroy();
+        GridLayers.destroy();
         GridToolbar.destroy();
         GridRooms.destroy();
         GridDrag.destroy();

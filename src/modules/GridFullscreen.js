@@ -18,11 +18,12 @@ var GridFullscreen = (function () {
     var zCfg = cfg.zoom || {};
     if (!zCfg.fullscreen) return jQuery();
 
+    var cid = _TL.cid();
     var $btn = jQuery("<button>")
       .addClass("tl-zoom-btn tl-zoom-btn-fullscreen")
       .attr("title", "Toggle fullscreen")
       .html('<i class="fa-solid fa-expand"></i>')
-      .on("click", function () { toggle(); });
+      .on("click", function () { _TL.use(cid); toggle(); });
 
     return $btn;
   }

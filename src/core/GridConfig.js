@@ -85,34 +85,6 @@ var GridConfig = (function () {
         clipPath: null,
         borderRadius: "50%",
       },
-      hexagon: {
-        label: "Hexagon",
-        icon: "fa-solid fa-hexagon",
-        minCols: 3,
-        minRows: 2,
-        preferSquare: false,
-        clipPath:
-          "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
-        borderRadius: "0",
-      },
-      diamond: {
-        label: "Diamond",
-        icon: "fa-regular fa-gem",
-        minCols: 2,
-        minRows: 2,
-        preferSquare: true,
-        clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-        borderRadius: "0",
-      },
-      triangle: {
-        label: "Triangle",
-        icon: "fa-solid fa-triangle",
-        minCols: 2,
-        minRows: 2,
-        preferSquare: true,
-        clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
-        borderRadius: "0",
-      },
     },
 
     newTable: {

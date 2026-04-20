@@ -37,6 +37,7 @@ var TableLayout = (function () {
     GridCore.init(cfg);
     GridZoom.init(cfg.zoom.initial || 1);
     GridFullscreen.init();
+    GridLayers.init();
     GridToolbar.init();
     GridDrag.init();
     GridResize.init();
@@ -297,6 +298,7 @@ var TableLayout = (function () {
         GridPlace.unbind();
         GridZoom.destroy();
         GridFullscreen.destroy();
+        GridLayers.destroy();
         GridToolbar.destroy();
         GridRooms.destroy();
         GridDrag.destroy();

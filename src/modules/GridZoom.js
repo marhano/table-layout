@@ -16,6 +16,7 @@ var GridZoom = (function () {
     var zCfg = cfg.zoom || {};
     if (!zCfg.enabled || !zCfg.showControls) return jQuery();
 
+    var cid = _TL.cid();
     var min  = zCfg.min  || 0.4;
     var max  = zCfg.max  || 2;
     var step = zCfg.step || 0.1;
@@ -24,12 +25,12 @@ var GridZoom = (function () {
       .addClass("tl-zoom-btn tl-zoom-btn-reset")
       .attr("title", "Reset zoom")
       .html(zCfg.labelReset || "↺")
-      .on("click", function () { applyZoom(zCfg.initial || 1); });
+      .on("click", function () { _TL.use(cid); applyZoom(zCfg.initial || 1); });
 
     var $slider = jQuery("<input>")
       .attr({ type: "range", min: min, max: max, step: step, value: _c().zoom })
       .addClass("tl-zoom-slider")
-      .on("input", function () { applyZoom(parseFloat(this.value)); });
+      .on("input", function () { _TL.use(cid); applyZoom(parseFloat(this.value)); });
 
     var $label = jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_c().zoom));
 

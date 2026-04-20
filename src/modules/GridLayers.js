@@ -36,6 +36,7 @@ var GridLayers = (function () {
     if (!ctx || !ctx.$tabBar) return;
     ctx.$tabBar.empty();
 
+    var cid = _TL.cid();
     var cfg = GridCore.getConfig();
     var layers = GridCore.getLayers();
     var activeId = GridCore.getActiveLayerId();
@@ -56,6 +57,7 @@ var GridLayers = (function () {
           .html("&times;")
           .on("click", function (e) {
             e.stopPropagation();
+            _TL.use(cid);
             if (cfg.realTime === false && !GridCore.isEditing()) return;
             _confirmDeleteLayer(layer);
           });
@@ -63,6 +65,7 @@ var GridLayers = (function () {
       }
 
       $tab.on("click", function () {
+        _TL.use(cid);
         if (isActive) return;
         if (cfg.realTime === false && GridCore.isEditing()) return;
         GridCore.switchLayer(layer.id);
@@ -70,6 +73,7 @@ var GridLayers = (function () {
       });
 
       $tab.on("dragstart", function (e) {
+        _TL.use(cid);
         if (cfg.realTime === false && !GridCore.isEditing()) { e.preventDefault(); return; }
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", layer.id);
@@ -89,6 +93,7 @@ var GridLayers = (function () {
       });
       $tab.on("drop", function (e) {
         e.preventDefault();
+        _TL.use(cid);
         $tab.removeClass("tl-tab--drag-over");
         var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
         if (draggedId === layer.id) return;
@@ -103,6 +108,7 @@ var GridLayers = (function () {
 
       $tab.on("dblclick", function (e) {
         e.stopPropagation();
+        _TL.use(cid);
         if (cfg.realTime !== false || !GridCore.isEditing()) return;
         _startTabRename($tab, layer);
       });
@@ -115,9 +121,11 @@ var GridLayers = (function () {
       .attr("title", "Add Floor")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
+        _TL.use(cid);
         if (cfg.realTime === false && !GridCore.isEditing()) return;
         if (typeof cfg.onCreateLayer === "function") {
           cfg.onCreateLayer(function (details) {
+            _TL.use(cid);
             _createNewLayer(details);
           });
           return;
