@@ -457,7 +457,7 @@ var GridToolbar = (function () {
     var $mselBtn = jQuery("<button>")
       .addClass("tl-shape-tool-btn tl-multiselect-tool-btn")
       .attr({ title: "Multi-select" })
-      .append(jQuery("<i>").addClass("fa-solid fa-object-group"))
+      .append(jQuery("<i>").addClass("fa-solid fa-arrow-pointer"))
       .on("click", function () {
         if (GridMultiSelect.isActive()) {
           GridMultiSelect.deactivate();

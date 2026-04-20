@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-18T18:45:07.723Z
+ * Built: 2026-04-20T01:49:31.782Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -1822,7 +1822,7 @@ var GridToolbar = (function () {
     var $mselBtn = jQuery("<button>")
       .addClass("tl-shape-tool-btn tl-multiselect-tool-btn")
       .attr({ title: "Multi-select" })
-      .append(jQuery("<i>").addClass("fa-solid fa-object-group"))
+      .append(jQuery("<i>").addClass("fa-solid fa-arrow-pointer"))
       .on("click", function () {
         if (GridMultiSelect.isActive()) {
           GridMultiSelect.deactivate();
