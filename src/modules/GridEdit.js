@@ -165,7 +165,7 @@ var GridEdit = (function () {
         var origId = table.id;
         GridCore.updateTable(origId, props);
         var updated = GridCore.tableById(props.id || origId);
-        jQuery('[data-table-id="' + origId + '"]').replaceWith(GridRender.buildTableCard(updated));
+        _TL.$('[data-table-id="' + origId + '"]').replaceWith(GridRender.buildTableCard(updated));
 
         if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
           cfg.onLayoutChange(GridCore.getLayout());
@@ -177,7 +177,7 @@ var GridEdit = (function () {
       jQuery('<div>').addClass('tl-modal-actions').append($cancel, $save)
     );
     $overlay.append($modal);
-    jQuery('.tl-root').first().append($overlay);
+    jQuery('#' + _TL.cid()).append($overlay);
 
     $overlay.on('click', function (e) {
       if (jQuery(e.target).is($overlay)) $overlay.remove();

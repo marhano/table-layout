@@ -2,16 +2,24 @@
  * GridLayers.js
  * Layer/floor tab bar — browser-style tabs for switching between layers.
  * Only active when cfg.layers is defined.
- *
- * Public API (called by GridToolbar):
- *   GridLayers.buildTabBar()   — returns the tab bar jQuery element
- *   GridLayers.renderTabs()    — re-renders tabs (called after edit mode changes)
+ * Per-instance state via _TL context.
  */
 var GridLayers = (function () {
-  var _$tabBar = null;
+  var _inst = {};
+
+  function _c() { return _inst[_TL.cid()]; }
+
+  function init() {
+    _inst[_TL.cid()] = { $tabBar: null };
+  }
+
+  function destroy() {
+    delete _inst[_TL.cid()];
+  }
 
   function buildTabBar() {
-    _$tabBar = jQuery("<div>").addClass("tl-tab-bar");
+    var ctx = _c();
+    ctx.$tabBar = jQuery("<div>").addClass("tl-tab-bar");
     _renderTabs();
 
     GridEvents.on("layer:added", function () { _renderTabs(); });
@@ -20,12 +28,13 @@ var GridLayers = (function () {
     GridEvents.on("layer:updated", function () { _renderTabs(); });
     GridEvents.on("layer:switched", function () { _renderTabs(); });
 
-    return _$tabBar;
+    return ctx.$tabBar;
   }
 
   function _renderTabs() {
-    if (!_$tabBar) return;
-    _$tabBar.empty();
+    var ctx = _c();
+    if (!ctx || !ctx.$tabBar) return;
+    ctx.$tabBar.empty();
 
     var cfg = GridCore.getConfig();
     var layers = GridCore.getLayers();
@@ -41,7 +50,6 @@ var GridLayers = (function () {
       var $label = jQuery("<span>").addClass("tl-tab-label").text(layer.label);
       $tab.append($icon, $label);
 
-      // Close button (only if more than 1 layer, in edit mode)
       if (layers.length > 1 && cfg.realTime === false && GridCore.isEditing()) {
         var $close = jQuery("<span>")
           .addClass("tl-tab-close")
@@ -54,7 +62,6 @@ var GridLayers = (function () {
         $tab.append($close);
       }
 
-      // Click to switch layer
       $tab.on("click", function () {
         if (isActive) return;
         if (cfg.realTime === false && GridCore.isEditing()) return;
@@ -62,7 +69,6 @@ var GridLayers = (function () {
         _rebuildGrid();
       });
 
-      // Drag-to-reorder
       $tab.on("dragstart", function (e) {
         if (cfg.realTime === false && !GridCore.isEditing()) { e.preventDefault(); return; }
         e.originalEvent.dataTransfer.effectAllowed = "move";
@@ -71,7 +77,7 @@ var GridLayers = (function () {
       });
       $tab.on("dragend", function () {
         $tab.removeClass("tl-tab--dragging");
-        _$tabBar.find(".tl-tab--drag-over").removeClass("tl-tab--drag-over");
+        ctx.$tabBar.find(".tl-tab--drag-over").removeClass("tl-tab--drag-over");
       });
       $tab.on("dragover", function (e) {
         e.preventDefault();
@@ -95,17 +101,15 @@ var GridLayers = (function () {
         GridCore.reorderLayers(currentIds);
       });
 
-      // Double-click to rename
       $tab.on("dblclick", function (e) {
         e.stopPropagation();
         if (cfg.realTime !== false || !GridCore.isEditing()) return;
         _startTabRename($tab, layer);
       });
 
-      _$tabBar.append($tab);
+      ctx.$tabBar.append($tab);
     });
 
-    // Add-tab button
     var $addTab = jQuery("<div>")
       .addClass("tl-tab-add")
       .attr("title", "Add Floor")
@@ -120,14 +124,12 @@ var GridLayers = (function () {
         }
         _openAddFloorModal();
       });
-    _$tabBar.append($addTab);
+    ctx.$tabBar.append($addTab);
   }
 
   function renderTabs() {
     _renderTabs();
   }
-
-  // ── Tab rename ────────────────────────────────────
 
   function _startTabRename($tab, layer) {
     var $label = $tab.find(".tl-tab-label");
@@ -154,10 +156,9 @@ var GridLayers = (function () {
     $input.on("click", function (e) { e.stopPropagation(); });
   }
 
-  // ── Create / delete layer ─────────────────────────
-
   function _openAddFloorModal() {
     var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
     var pickerCfg = cfg.iconPicker || {};
     var icons = pickerCfg.icons || [];
     var maxText = pickerCfg.maxTextLength || 4;
@@ -251,6 +252,7 @@ var GridLayers = (function () {
         $nameInput.removeClass("tl-input-error");
         var iconVal = _selectedIcon || labelVal.charAt(0).toUpperCase();
         $overlay.remove();
+        _TL.use(cid);
         _createNewLayer({ label: labelVal, icon: iconVal });
       });
 
@@ -260,7 +262,7 @@ var GridLayers = (function () {
     $actions.append($cancel, $create);
     $modal.append($nameField, $iconField, $actions);
     $overlay.append($modal);
-    jQuery(".tl-root").first().append($overlay);
+    jQuery("#" + cid).append($overlay);
 
     $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
 
@@ -288,6 +290,7 @@ var GridLayers = (function () {
 
   function _confirmDeleteLayer(layer) {
     var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
     var $overlay = jQuery("<div>").addClass("tl-overlay");
     var $modal = jQuery("<div>").addClass("tl-modal");
     $modal.append(
@@ -304,6 +307,7 @@ var GridLayers = (function () {
     var $confirm = jQuery("<button>").addClass("tl-btn tl-btn-danger").text("Delete")
       .on("click", function () {
         $overlay.remove();
+        _TL.use(cid);
         var wasActive = (layer.id === GridCore.getActiveLayerId());
         GridCore.deleteLayer(layer.id);
         if (wasActive) _rebuildGrid();
@@ -311,11 +315,9 @@ var GridLayers = (function () {
     $actions.append($cancel, $confirm);
     $modal.append($actions);
     $overlay.append($modal);
-    jQuery(".tl-root").first().append($overlay);
+    jQuery("#" + cid).append($overlay);
     $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
-
-  // ── Icon badge ────────────────────────────────────
 
   function _buildIconBadge(layer) {
     var $badge = jQuery("<div>").addClass("tl-toolbar-icon-badge");
@@ -337,13 +339,13 @@ var GridLayers = (function () {
     $el.text(iconValue);
   }
 
-  // ── Helpers ───────────────────────────────────────
-
   function _rebuildGrid() {
-    jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+    _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
   }
 
   return {
+    init: init,
+    destroy: destroy,
     buildTabBar: buildTabBar,
     renderTabs: renderTabs,
   };

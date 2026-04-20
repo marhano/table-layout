@@ -3,116 +3,147 @@
  * Multi-select tool: drag a marquee rectangle on the grid to select
  * tables, then drag the group or drop onto trash zone to delete.
  * Click on empty grid space to deselect all.
+ * Per-instance state via _TL context.
  */
 var GridMultiSelect = (function () {
-  var _active = false;       // tool is toggled on
-  var _selected = [];        // array of selected table IDs
+  var _inst = {};
 
-  // ── Marquee state ──
-  var _marquee = false;      // currently drawing marquee
-  var _marqueeStart = null;  // { x, y } client coords
-  var _$marquee = null;      // jQuery element for the marquee rectangle
+  function _c() { return _inst[_TL.cid()]; }
 
-  // ── Group-drag state ──
-  var _dragging = false;
-  var _dragAnchor = null;
-  var _offsets = [];
-  var _$ghosts = [];
+  function init() {
+    _inst[_TL.cid()] = {
+      active: false,
+      selected: [],
+      marquee: false,
+      marqueeStart: null,
+      $marquee: null,
+      dragging: false,
+      dragAnchor: null,
+      offsets: [],
+      $ghosts: []
+    };
+  }
+
+  function destroy() {
+    var cid = _TL.cid();
+    jQuery(document).off(".tl-msel-" + cid);
+    delete _inst[cid];
+  }
 
   // ── Public: activate / deactivate ─────────────────
 
-  function isActive() { return _active; }
+  function isActive() {
+    var ctx = _c();
+    return ctx ? ctx.active : false;
+  }
 
   function activate() {
     var cfg = GridCore.getConfig();
     if (cfg.realTime === false && !GridCore.isEditing()) return;
-    _active = true;
-    _selected = [];
+    var ctx = _c();
+    ctx.active = true;
+    ctx.selected = [];
     GridToolbar.deactivate();
-    jQuery(".tl-canvas").addClass("tl-multiselect-mode");
-    jQuery(".tl-multiselect-tool-btn").addClass("active");
+    _TL.$(".tl-canvas").addClass("tl-multiselect-mode");
+    _TL.$(".tl-multiselect-tool-btn").addClass("active");
     // Disable native HTML5 drag so mousedown works for selection
-    jQuery(".tl-table-card").attr("draggable", "false");
+    _TL.$(".tl-table-card").attr("draggable", "false");
   }
 
   function deactivate() {
-    _active = false;
+    var ctx = _c();
+    if (!ctx) return;
+    ctx.active = false;
     _clearSelection();
     _removeMarquee();
-    jQuery(".tl-canvas").removeClass("tl-multiselect-mode");
-    jQuery(".tl-multiselect-tool-btn").removeClass("active");
+    _TL.$(".tl-canvas").removeClass("tl-multiselect-mode");
+    _TL.$(".tl-multiselect-tool-btn").removeClass("active");
     // Restore native drag
     var cfg = GridCore.getConfig();
     if (cfg.draggable && (cfg.realTime !== false || GridCore.isEditing())) {
-      jQuery(".tl-table-card").attr("draggable", "true");
+      _TL.$(".tl-table-card").attr("draggable", "true");
     }
   }
 
   function _clearSelection() {
-    _selected = [];
-    jQuery(".tl-table-card").removeClass("tl-selected");
+    var ctx = _c();
+    ctx.selected = [];
+    _TL.$(".tl-table-card").removeClass("tl-selected");
   }
 
   function _removeMarquee() {
-    if (_$marquee) { _$marquee.remove(); _$marquee = null; }
-    _marquee = false;
-    _marqueeStart = null;
+    var ctx = _c();
+    if (ctx.$marquee) { ctx.$marquee.remove(); ctx.$marquee = null; }
+    ctx.marquee = false;
+    ctx.marqueeStart = null;
   }
 
   // ── Bind events ───────────────────────────────────
 
   function bind() {
     var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
     var gridSel = "#" + cfg.containerId + " .tl-layout-grid";
     var trashSel = "#" + cfg.containerId + " .tl-trash-zone";
 
     // ── Mousedown on a SELECTED table card → start group drag ──
-    jQuery(document).on("mousedown.tl-msel", gridSel + " .tl-table-card", function (e) {
-      if (!_active) return;
-      if (_dragging || _marquee) return;
+    jQuery(document).on("mousedown.tl-msel-" + cid, gridSel + " .tl-table-card", function (e) {
+      _TL.use(cid);
+      var ctx = _c();
+      if (!ctx.active) return;
+      if (ctx.dragging || ctx.marquee) return;
       if (jQuery(e.target).closest(".tl-table-edit-btn, .tl-resize-handle").length) return;
 
       var id = jQuery(this).data("table-id");
-      var isSelected = _selected.indexOf(id) !== -1;
+      var isSelected = ctx.selected.indexOf(id) !== -1;
 
-      if (isSelected && _selected.length > 0) {
+      if (isSelected && ctx.selected.length > 0) {
         // Start group drag
         e.preventDefault();
         e.stopPropagation();
 
         var pos = GridCore.cursorToGrid(e.clientX, e.clientY);
-        _dragAnchor = { col: pos.col, row: pos.row };
+        ctx.dragAnchor = { col: pos.col, row: pos.row };
 
-        _offsets = [];
-        _selected.forEach(function (sid) {
+        ctx.offsets = [];
+        ctx.selected.forEach(function (sid) {
           var t = GridCore.tableById(sid);
           if (t) {
-            _offsets.push({ id: sid, dCol: t.col - pos.col, dRow: t.row - pos.row, colSpan: t.colSpan, rowSpan: t.rowSpan });
+            ctx.offsets.push({ id: sid, dCol: t.col - pos.col, dRow: t.row - pos.row, colSpan: t.colSpan, rowSpan: t.rowSpan });
           }
         });
 
-        _dragging = true;
-        _selected.forEach(function (sid) {
-          jQuery('[data-table-id="' + sid + '"]').css("opacity", "0.25");
+        ctx.dragging = true;
+        ctx.selected.forEach(function (sid) {
+          _TL.$('[data-table-id="' + sid + '"]').css("opacity", "0.25");
         });
-        if (cfg.trashZone) jQuery(trashSel).addClass("tl-trash-zone--visible");
+        var cfg2 = GridCore.getConfig();
+        if (cfg2.trashZone) jQuery(trashSel).addClass("tl-trash-zone--visible");
 
-        jQuery(document).on("mousemove.tl-msel-drag", _onDragMove);
-        jQuery(document).on("mouseup.tl-msel-drag", _onDragEnd);
+        jQuery(document).on("mousemove.tl-msel-drag-" + cid, function (ev) {
+          _TL.use(cid);
+          _onDragMove(ev);
+        });
+        jQuery(document).on("mouseup.tl-msel-drag-" + cid, function (ev) {
+          _TL.use(cid);
+          _onDragEnd(ev);
+        });
         return;
       }
       // Not selected — let the event fall through to the grid handler for marquee
     });
 
     // ── Mousedown on grid (empty space or unselected card) → marquee or deselect ──
-    jQuery(document).on("mousedown.tl-msel-grid", gridSel, function (e) {
-      if (!_active) return;
-      if (_dragging) return;
+    jQuery(document).on("mousedown.tl-msel-grid-" + cid, gridSel, function (e) {
+      _TL.use(cid);
+      var ctx = _c();
+      if (!ctx.active) return;
+      if (ctx.dragging) return;
       if (jQuery(e.target).closest(".tl-table-edit-btn, .tl-resize-handle").length) return;
 
       // If click landed on a selected card the handler above handles it
       var $card = jQuery(e.target).closest(".tl-table-card");
-      if ($card.length && _selected.indexOf($card.data("table-id")) !== -1) return;
+      if ($card.length && ctx.selected.indexOf($card.data("table-id")) !== -1) return;
 
       e.preventDefault();
 
@@ -121,34 +152,36 @@ var GridMultiSelect = (function () {
       _removeMarquee();
 
       // Start marquee
-      _marquee = true;
-      _marqueeStart = { x: e.clientX, y: e.clientY };
+      ctx.marquee = true;
+      ctx.marqueeStart = { x: e.clientX, y: e.clientY };
 
       // Create the visual marquee element inside the grid (hidden until drag)
       var gridEl = jQuery(gridSel)[0];
       var gridRect = gridEl.getBoundingClientRect();
-      _$marquee = jQuery("<div class='tl-marquee-rect'></div>");
-      _$marquee.css({
+      ctx.$marquee = jQuery("<div class='tl-marquee-rect'></div>");
+      ctx.$marquee.css({
         left: (e.clientX - gridRect.left) + "px",
         top: (e.clientY - gridRect.top) + "px",
         width: "0px",
         height: "0px",
         display: "none"
       });
-      jQuery(gridSel).append(_$marquee);
+      jQuery(gridSel).append(ctx.$marquee);
 
-      jQuery(document).on("mousemove.tl-msel-marquee", function (ev) {
-        if (!_marquee || !_$marquee) return;
-        var x1 = Math.min(_marqueeStart.x, ev.clientX);
-        var y1 = Math.min(_marqueeStart.y, ev.clientY);
-        var x2 = Math.max(_marqueeStart.x, ev.clientX);
-        var y2 = Math.max(_marqueeStart.y, ev.clientY);
+      jQuery(document).on("mousemove.tl-msel-marquee-" + cid, function (ev) {
+        _TL.use(cid);
+        var ctx2 = _c();
+        if (!ctx2.marquee || !ctx2.$marquee) return;
+        var x1 = Math.min(ctx2.marqueeStart.x, ev.clientX);
+        var y1 = Math.min(ctx2.marqueeStart.y, ev.clientY);
+        var x2 = Math.max(ctx2.marqueeStart.x, ev.clientX);
+        var y2 = Math.max(ctx2.marqueeStart.y, ev.clientY);
         // Show marquee only once drag exceeds a small threshold
         if (x2 - x1 > 3 || y2 - y1 > 3) {
-          _$marquee.css("display", "");
+          ctx2.$marquee.css("display", "");
         }
         var gr = gridEl.getBoundingClientRect();
-        _$marquee.css({
+        ctx2.$marquee.css({
           left: (x1 - gr.left) + "px",
           top: (y1 - gr.top) + "px",
           width: (x2 - x1) + "px",
@@ -156,14 +189,16 @@ var GridMultiSelect = (function () {
         });
       });
 
-      jQuery(document).on("mouseup.tl-msel-marquee", function (ev) {
-        jQuery(document).off("mousemove.tl-msel-marquee mouseup.tl-msel-marquee");
-        if (!_marquee) return;
+      jQuery(document).on("mouseup.tl-msel-marquee-" + cid, function (ev) {
+        _TL.use(cid);
+        jQuery(document).off("mousemove.tl-msel-marquee-" + cid + " mouseup.tl-msel-marquee-" + cid);
+        var ctx2 = _c();
+        if (!ctx2.marquee) return;
 
-        var x1 = Math.min(_marqueeStart.x, ev.clientX);
-        var y1 = Math.min(_marqueeStart.y, ev.clientY);
-        var x2 = Math.max(_marqueeStart.x, ev.clientX);
-        var y2 = Math.max(_marqueeStart.y, ev.clientY);
+        var x1 = Math.min(ctx2.marqueeStart.x, ev.clientX);
+        var y1 = Math.min(ctx2.marqueeStart.y, ev.clientY);
+        var x2 = Math.max(ctx2.marqueeStart.x, ev.clientX);
+        var y2 = Math.max(ctx2.marqueeStart.y, ev.clientY);
 
         _removeMarquee();
 
@@ -174,15 +209,15 @@ var GridMultiSelect = (function () {
         }
 
         // Find all tables whose card DOM rectangles intersect the marquee
-        _selected = [];
+        ctx2.selected = [];
         var tables = GridCore.getTables();
         tables.forEach(function (t) {
-          var $el = jQuery('[data-table-id="' + t.id + '"]');
+          var $el = _TL.$('[data-table-id="' + t.id + '"]');
           if (!$el.length) return;
           var r = $el[0].getBoundingClientRect();
           // Check overlap
           if (r.right > x1 && r.left < x2 && r.bottom > y1 && r.top < y2) {
-            _selected.push(t.id);
+            ctx2.selected.push(t.id);
             $el.addClass("tl-selected");
           }
         });
@@ -193,23 +228,24 @@ var GridMultiSelect = (function () {
   // ── Group drag move ───────────────────────────────
 
   function _onDragMove(e) {
-    if (!_dragging) return;
+    var ctx = _c();
+    if (!ctx.dragging) return;
     var pos = GridCore.cursorToGrid(e.clientX, e.clientY);
     _removeGhosts();
 
-    var cfg = GridCore.getConfig();
-    var allIds = _selected.slice();
+    var allIds = ctx.selected.slice();
 
-    _offsets.forEach(function (o) {
+    ctx.offsets.forEach(function (o) {
       var c = pos.col + o.dCol;
       var r = pos.row + o.dRow;
       var bad = GridCore.hasCollision(c, r, o.colSpan, o.rowSpan, allIds);
       var $g = GridRender.buildDragGhost(c, r, o.colSpan, o.rowSpan, bad);
-      jQuery(".tl-layout-grid").append($g);
-      _$ghosts.push($g);
+      _TL.$(".tl-layout-grid").append($g);
+      ctx.$ghosts.push($g);
     });
 
     // Trash hover
+    var cfg = GridCore.getConfig();
     if (cfg.trashZone) {
       var trSel = "#" + cfg.containerId + " .tl-trash-zone";
       var trashEl = jQuery(trSel)[0];
@@ -225,9 +261,11 @@ var GridMultiSelect = (function () {
   // ── Group drag end ────────────────────────────────
 
   function _onDragEnd(e) {
-    jQuery(document).off("mousemove.tl-msel-drag mouseup.tl-msel-drag");
-    if (!_dragging) return;
-    _dragging = false;
+    var cid = _TL.cid();
+    jQuery(document).off("mousemove.tl-msel-drag-" + cid + " mouseup.tl-msel-drag-" + cid);
+    var ctx = _c();
+    if (!ctx.dragging) return;
+    ctx.dragging = false;
 
     var cfg = GridCore.getConfig();
     var trashSel = "#" + cfg.containerId + " .tl-trash-zone";
@@ -235,8 +273,8 @@ var GridMultiSelect = (function () {
     _removeGhosts();
 
     // Restore opacity
-    _selected.forEach(function (sid) {
-      jQuery('[data-table-id="' + sid + '"]').css("opacity", "");
+    ctx.selected.forEach(function (sid) {
+      _TL.$('[data-table-id="' + sid + '"]').css("opacity", "");
     });
 
     if (cfg.trashZone) jQuery(trashSel).removeClass("tl-trash-zone--visible tl-trash-zone--active");
@@ -251,12 +289,12 @@ var GridMultiSelect = (function () {
         var over = e.clientX >= rect.left && e.clientX <= rect.right &&
                    e.clientY >= rect.top && e.clientY <= rect.bottom;
         if (over) {
-          _selected.forEach(function (sid) {
-            jQuery('[data-table-id="' + sid + '"]').remove();
+          ctx.selected.forEach(function (sid) {
+            _TL.$('[data-table-id="' + sid + '"]').remove();
             GridCore.removeTable(sid);
           });
-          _selected = [];
-          jQuery(".tl-table-card").removeClass("tl-selected");
+          ctx.selected = [];
+          _TL.$(".tl-table-card").removeClass("tl-selected");
           if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
             cfg.onLayoutChange(GridCore.getLayout());
           return;
@@ -265,11 +303,11 @@ var GridMultiSelect = (function () {
     }
 
     // ── Validate all new positions ──
-    var allIds = _selected.slice();
+    var allIds = ctx.selected.slice();
     var moves = [];
     var anyBad = false;
 
-    _offsets.forEach(function (o) {
+    ctx.offsets.forEach(function (o) {
       var c = pos.col + o.dCol;
       var r = pos.row + o.dRow;
       if (GridCore.hasCollision(c, r, o.colSpan, o.rowSpan, allIds)) {
@@ -287,7 +325,7 @@ var GridMultiSelect = (function () {
       var $new = GridRender.buildTableCard(t);
       $new.addClass("tl-selected");
       $new.attr("draggable", "false");
-      jQuery('[data-table-id="' + m.id + '"]').replaceWith($new);
+      _TL.$('[data-table-id="' + m.id + '"]').replaceWith($new);
     });
 
     if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
@@ -295,21 +333,28 @@ var GridMultiSelect = (function () {
   }
 
   function _removeGhosts() {
-    _$ghosts.forEach(function ($g) { $g.remove(); });
-    _$ghosts = [];
+    var ctx = _c();
+    ctx.$ghosts.forEach(function ($g) { $g.remove(); });
+    ctx.$ghosts = [];
   }
 
   function unbind() {
-    jQuery(document).off(".tl-msel").off(".tl-msel-drag").off(".tl-msel-grid").off(".tl-msel-marquee");
-    _active = false;
-    _selected = [];
-    _dragging = false;
-    _marquee = false;
-    _$ghosts = [];
-    _removeMarquee();
+    var cid = _TL.cid();
+    jQuery(document).off(".tl-msel-" + cid).off(".tl-msel-drag-" + cid).off(".tl-msel-grid-" + cid).off(".tl-msel-marquee-" + cid);
+    var ctx = _c();
+    if (ctx) {
+      ctx.active = false;
+      ctx.selected = [];
+      ctx.dragging = false;
+      ctx.marquee = false;
+      ctx.$ghosts = [];
+      _removeMarquee();
+    }
   }
 
   return {
+    init: init,
+    destroy: destroy,
     bind: bind,
     unbind: unbind,
     isActive: isActive,

@@ -2,6 +2,7 @@ var fs = require("fs");
 var path = require("path");
 
 var files = [
+  "src/core/_TL.js",
   "src/core/GridConfig.js",
   "src/core/GridEvents.js",
   "src/core/GridCore.js",

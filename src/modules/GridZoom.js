@@ -1,8 +1,14 @@
 var GridZoom = (function () {
-  var _zoom = 1;
+  var _inst = {};
+
+  function _c() { return _inst[_TL.cid()]; }
 
   function init(initial) {
-    _zoom = initial || 1;
+    _inst[_TL.cid()] = { zoom: initial || 1 };
+  }
+
+  function destroy() {
+    delete _inst[_TL.cid()];
   }
 
   function buildControls() {
@@ -21,11 +27,11 @@ var GridZoom = (function () {
       .on("click", function () { applyZoom(zCfg.initial || 1); });
 
     var $slider = jQuery("<input>")
-      .attr({ type: "range", min: min, max: max, step: step, value: _zoom })
+      .attr({ type: "range", min: min, max: max, step: step, value: _c().zoom })
       .addClass("tl-zoom-slider")
       .on("input", function () { applyZoom(parseFloat(this.value)); });
 
-    var $label = jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_zoom));
+    var $label = jQuery("<span>").addClass("tl-zoom-label").text(_fmt(_c().zoom));
 
     var $fullscreen = GridFullscreen.buildButton();
 
@@ -41,17 +47,17 @@ var GridZoom = (function () {
     var max = zCfg.max || 2;
 
     level = parseFloat(Math.min(max, Math.max(min, level)).toFixed(2));
-    _zoom = level;
+    _c().zoom = level;
 
-    var $za = jQuery(".tl-zoom-area");
+    var $za = _TL.$(".tl-zoom-area");
     $za.css("transform", "scale(" + level + ")");
 
     var natW = $za[0] ? $za[0].scrollWidth : 0;
     var natH = $za[0] ? $za[0].scrollHeight : 0;
     $za.css({ width: natW * level + "px", height: natH * level + "px" });
 
-    jQuery(".tl-zoom-label").text(_fmt(level));
-    jQuery(".tl-zoom-slider").val(level);
+    _TL.$(".tl-zoom-label").text(_fmt(level));
+    _TL.$(".tl-zoom-slider").val(level);
 
     GridEvents.emit("zoom:changed", level);
 
@@ -63,11 +69,14 @@ var GridZoom = (function () {
     var zCfg = cfg.zoom || {};
     if (!zCfg.enabled || !zCfg.mouseWheel) return;
 
-    jQuery("#" + cfg.containerId).on("wheel.tl", function (e) {
+    var cid = _TL.cid();
+
+    jQuery("#" + cid).on("wheel.tl-" + cid, function (e) {
       if (!e.originalEvent.ctrlKey) return;
       e.preventDefault();
+      _TL.use(cid);
       applyZoom(
-        _zoom + (e.originalEvent.deltaY > 0 ? -1 : 1) * (zCfg.step || 0.1),
+        _c().zoom + (e.originalEvent.deltaY > 0 ? -1 : 1) * (zCfg.step || 0.1),
       );
     });
 
@@ -75,18 +84,20 @@ var GridZoom = (function () {
     var _pinchStartDist = null;
     var _pinchStartZoom = null;
 
-    jQuery("#" + cfg.containerId).on("touchstart.tl-zoom", function (e) {
+    jQuery("#" + cid).on("touchstart.tl-zoom-" + cid, function (e) {
       if (e.originalEvent.touches.length === 2) {
+        _TL.use(cid);
         var t1 = e.originalEvent.touches[0];
         var t2 = e.originalEvent.touches[1];
         _pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        _pinchStartZoom = _zoom;
+        _pinchStartZoom = _c().zoom;
       }
     });
 
-    jQuery("#" + cfg.containerId).on("touchmove.tl-zoom", function (e) {
+    jQuery("#" + cid).on("touchmove.tl-zoom-" + cid, function (e) {
       if (e.originalEvent.touches.length === 2 && _pinchStartDist) {
         e.preventDefault();
+        _TL.use(cid);
         var t1 = e.originalEvent.touches[0];
         var t2 = e.originalEvent.touches[1];
         var dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -95,7 +106,7 @@ var GridZoom = (function () {
       }
     });
 
-    jQuery("#" + cfg.containerId).on("touchend.tl-zoom touchcancel.tl-zoom", function (e) {
+    jQuery("#" + cid).on("touchend.tl-zoom-" + cid + " touchcancel.tl-zoom-" + cid, function (e) {
       if (e.originalEvent.touches.length < 2) {
         _pinchStartDist = null;
         _pinchStartZoom = null;
@@ -107,11 +118,12 @@ var GridZoom = (function () {
     return Math.round(l * 100) + "%";
   }
   function getZoom() {
-    return _zoom;
+    return _c().zoom;
   }
 
   return {
     init: init,
+    destroy: destroy,
     buildControls: buildControls,
     applyZoom: applyZoom,
     bindWheelZoom: bindWheelZoom,

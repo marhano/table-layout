@@ -1,80 +1,89 @@
+/**
+ * GridPlace.js
+ * Place new tables on the grid by selecting a shape tool and dragging.
+ * Per-instance state via _TL context.
+ */
 var GridPlace = (function () {
-  var _start = null;
-  var _$ghost = null;
-  var _pending = null;
-  var _placeTouchMoveHandler = null;
+  var _inst = {};
+
+  function _c() { return _inst[_TL.cid()]; }
+
+  function init() {
+    _inst[_TL.cid()] = {
+      start: null,
+      $ghost: null,
+      pending: null,
+      placeTouchMoveHandler: null
+    };
+  }
+
+  function destroy() {
+    var cid = _TL.cid();
+    var ctx = _inst[cid];
+    if (ctx && ctx.placeTouchMoveHandler) {
+      document.removeEventListener("touchmove", ctx.placeTouchMoveHandler);
+    }
+    jQuery(document).off(".tl-place-" + cid);
+    delete _inst[cid];
+  }
 
   function bind() {
     var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
     var gridSel = "#" + cfg.containerId + " .tl-layout-grid";
 
-    jQuery(document).on("mousedown.tl", gridSel + " .tl-cell", function (e) {
+    jQuery(document).on("mousedown.tl-place-" + cid, gridSel + " .tl-cell", function (e) {
+      _TL.use(cid);
       if (cfg.realTime === false && !GridCore.isEditing()) return;
       if (!GridToolbar.getActive() || e.which !== 1) return;
       e.preventDefault();
-      _start = {
+      var ctx = _c();
+      ctx.start = {
         col: parseInt(jQuery(this).data("col")),
         row: parseInt(jQuery(this).data("row")),
       };
     });
 
-    jQuery(document).on("mousemove.tl", gridSel, function (e) {
-      if (!GridToolbar.getActive() || !_start) return;
-      var end = GridCore.cursorToGrid(
-        e.originalEvent.clientX,
-        e.originalEvent.clientY,
-      );
-      var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
-      var bad = GridCore.hasCollision(
-        span.col,
-        span.row,
-        span.colSpan,
-        span.rowSpan,
-        null,
-      );
+    jQuery(document).on("mousemove.tl-place-" + cid, gridSel, function (e) {
+      _TL.use(cid);
+      var ctx = _c();
+      if (!GridToolbar.getActive() || !ctx.start) return;
+      var end = GridCore.cursorToGrid(e.originalEvent.clientX, e.originalEvent.clientY);
+      var span = GridCore.calcSpan(ctx.start, end, GridToolbar.getActive());
+      var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
       _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
     });
 
-    jQuery(document).on("mouseup.tl", gridSel, function (e) {
-      if (!GridToolbar.getActive() || !_start || e.which !== 1) return;
-      var end = GridCore.cursorToGrid(
-        e.originalEvent.clientX,
-        e.originalEvent.clientY,
-      );
-      var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
+    jQuery(document).on("mouseup.tl-place-" + cid, gridSel, function (e) {
+      _TL.use(cid);
+      var ctx = _c();
+      if (!GridToolbar.getActive() || !ctx.start || e.which !== 1) return;
+      var end = GridCore.cursorToGrid(e.originalEvent.clientX, e.originalEvent.clientY);
+      var span = GridCore.calcSpan(ctx.start, end, GridToolbar.getActive());
       _removeGhost();
-      _start = null;
-      if (
-        GridCore.hasCollision(
-          span.col,
-          span.row,
-          span.colSpan,
-          span.rowSpan,
-          null,
-        )
-      )
-        return;
+      ctx.start = null;
+      if (GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null)) return;
       _showModal(jQuery.extend({}, span, { shape: GridToolbar.getActive() }));
     });
 
-    jQuery(document).on("mouseup.tl", function (e) {
-      if (
-        GridToolbar.getActive() &&
-        _start &&
-        !jQuery(e.target).closest(gridSel).length
-      ) {
-        _start = null;
+    jQuery(document).on("mouseup.tl-place-" + cid, function (e) {
+      _TL.use(cid);
+      var ctx = _c();
+      if (GridToolbar.getActive() && ctx.start && !jQuery(e.target).closest(gridSel).length) {
+        ctx.start = null;
         _removeGhost();
       }
     });
 
-    jQuery(document).on("keydown.tl", function (e) {
-      if (e.key === "Escape" && GridToolbar.getActive())
-        GridToolbar.deactivate();
+    jQuery(document).on("keydown.tl-place-" + cid, function (e) {
+      _TL.use(cid);
+      if (e.key === "Escape" && GridToolbar.getActive()) GridToolbar.deactivate();
     });
 
     // ── Touch: shape drawing ───────────────────────
-    jQuery(document).on("touchstart.tl", gridSel + " .tl-cell", function (e) {
+    jQuery(document).on("touchstart.tl-place-" + cid, gridSel + " .tl-cell", function (e) {
+      _TL.use(cid);
+      var ctx = _c();
       if (cfg.editMode !== false && !GridCore.isEditing()) return;
       if (!GridToolbar.getActive()) return;
       if (e.originalEvent.touches.length !== 1) return;
@@ -82,35 +91,39 @@ var GridPlace = (function () {
       var touch = e.originalEvent.touches[0];
       var $cell = jQuery(document.elementFromPoint(touch.clientX, touch.clientY)).closest(".tl-cell");
       if (!$cell.length) return;
-      _start = {
+      ctx.start = {
         col: parseInt($cell.data("col")),
         row: parseInt($cell.data("row")),
       };
 
-      _placeTouchMoveHandler = function (te) {
-        if (!_start) return;
+      ctx.placeTouchMoveHandler = function (te) {
+        _TL.use(cid);
+        var ctx2 = _c();
+        if (!ctx2.start) return;
         if (te.touches.length !== 1) return;
         te.preventDefault();
         var tc = te.touches[0];
         var end = GridCore.cursorToGrid(tc.clientX, tc.clientY);
-        var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
+        var span = GridCore.calcSpan(ctx2.start, end, GridToolbar.getActive());
         var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
         _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
       };
-      document.addEventListener("touchmove", _placeTouchMoveHandler, { passive: false });
+      document.addEventListener("touchmove", ctx.placeTouchMoveHandler, { passive: false });
     });
 
-    jQuery(document).on("touchend.tl", function (e) {
-      if (_placeTouchMoveHandler) {
-        document.removeEventListener("touchmove", _placeTouchMoveHandler);
-        _placeTouchMoveHandler = null;
+    jQuery(document).on("touchend.tl-place-" + cid, function (e) {
+      _TL.use(cid);
+      var ctx = _c();
+      if (ctx.placeTouchMoveHandler) {
+        document.removeEventListener("touchmove", ctx.placeTouchMoveHandler);
+        ctx.placeTouchMoveHandler = null;
       }
-      if (!GridToolbar.getActive() || !_start) return;
+      if (!GridToolbar.getActive() || !ctx.start) return;
       var touch = e.originalEvent.changedTouches[0];
       var end = GridCore.cursorToGrid(touch.clientX, touch.clientY);
-      var span = GridCore.calcSpan(_start, end, GridToolbar.getActive());
+      var span = GridCore.calcSpan(ctx.start, end, GridToolbar.getActive());
       _removeGhost();
-      _start = null;
+      ctx.start = null;
       if (GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null)) return;
       _showModal(jQuery.extend({}, span, { shape: GridToolbar.getActive() }));
     });
@@ -118,19 +131,22 @@ var GridPlace = (function () {
 
   function _showGhost(col, row, colSpan, rowSpan, invalid) {
     _removeGhost();
-    _$ghost = GridRender.buildPlaceGhost(col, row, colSpan, rowSpan, invalid);
-    jQuery(".tl-layout-grid").append(_$ghost);
+    var ctx = _c();
+    ctx.$ghost = GridRender.buildPlaceGhost(col, row, colSpan, rowSpan, invalid);
+    _TL.$(".tl-layout-grid").append(ctx.$ghost);
   }
 
   function _removeGhost() {
-    if (_$ghost) {
-      _$ghost.remove();
-      _$ghost = null;
+    var ctx = _c();
+    if (ctx.$ghost) {
+      ctx.$ghost.remove();
+      ctx.$ghost = null;
     }
   }
 
   function _showModal(placement) {
-    _pending = placement;
+    var ctx = _c();
+    ctx.pending = placement;
     var cfg = GridCore.getConfig();
     var shapeDef = (cfg.shapes || {})[placement.shape] || {};
     var nextName = (cfg.newTable.namePrefix || "Table") + " " + GridCore.getCounter();
@@ -150,7 +166,7 @@ var GridPlace = (function () {
       'z-index': 2
     });
     $tablesWrap.append($search, $select, $spinner);
-    // Helper to update select options
+
     function updateTableOptions(tables) {
       $select.empty();
       var filter = $search.val() ? $search.val().toLowerCase() : '';
@@ -158,7 +174,7 @@ var GridPlace = (function () {
         return !filter || t.TableName.toLowerCase().includes(filter);
       }).forEach(function (t, i) {
         const allLayers = GridCore.getAllLayersLayout();
-        if(allLayers.some(layer => layer.rooms.some(room => room.tables.some(tbl => tbl.id === t.TableId)))) return; // Skip tables already in any room
+        if(allLayers.some(layer => layer.rooms.some(room => room.tables.some(tbl => tbl.id === t.TableId)))) return;
         $select.append(
           jQuery('<option>')
             .val(i)
@@ -237,19 +253,12 @@ var GridPlace = (function () {
       ),
     );
 
-    // Add select field for tables (always show, may be loading)
     $modal.append(_field("Copy from existing table", $tablesWrap));
-
-    // $modal.append(jQuery("<hr>"));
 
     var $name = jQuery("<input>")
       .attr({ type: "text", placeholder: "Table name", maxlength: 30 })
       .val(nextName);
-    // $modal.append(_field("Name", $name));
 
-    // var $seats = jQuery("<input>")
-    //   .attr({ type: "number", min: 1, max: 50 })
-    //   .val(cfg.newTable.defaultSeats || 4);
     var $status = jQuery("<select>");
     jQuery.each(cfg.statusColors, function (s) {
       $status.append(
@@ -260,17 +269,10 @@ var GridPlace = (function () {
     });
     $status.val(cfg.newTable.defaultStatus || "available");
 
-    // Update header shape color when status changes
     $status.on("change", function () {
       var newColor = cfg.statusColors[jQuery(this).val()] || "#6b7280";
       $modal.find(".tl-modal-preview").css("background", newColor);
     });
-
-    // $modal.append(
-    //   jQuery("<div>")
-    //     .addClass("tl-field-row")
-    //     .append(_field("Seats", $seats), _field("Status", $status)),
-    // );
 
     var $err = jQuery("<p>")
       .addClass("tl-error")
@@ -282,21 +284,20 @@ var GridPlace = (function () {
       .text("Cancel")
       .on("click", function () {
         $overlay.remove();
-        _pending = null;
+        var ctx2 = _c();
+        if (ctx2) ctx2.pending = null;
       });
 
     var $create = jQuery("<button>")
       .addClass("tl-btn tl-btn-primary")
       .text("Create Table")
       .on("click", function () {
-
         $err.hide();
         var table = defaultTables[$select.val()];
-
         _commit({
           id: table ? table.TableId : null,
           name: table ? table.TableName : $name.val() || nextName,
-          seats: parseInt(table ? table.Capacity : $seats.val()) || 4,
+          seats: parseInt(table ? table.Capacity : 4) || 4,
           status: table ? table.Status.toLowerCase() : $status.val(),
         });
         $overlay.remove();
@@ -306,7 +307,7 @@ var GridPlace = (function () {
       jQuery("<div>").addClass("tl-modal-actions").append($cancel, $create),
     );
     $overlay.append($modal);
-    jQuery(".tl-root").first().append($overlay);
+    jQuery("#" + _TL.cid()).append($overlay);
 
     setTimeout(function () {
       $name.trigger("focus").trigger("select");
@@ -314,7 +315,8 @@ var GridPlace = (function () {
     $overlay.on("click", function (e) {
       if (jQuery(e.target).is($overlay)) {
         $overlay.remove();
-        _pending = null;
+        var ctx2 = _c();
+        if (ctx2) ctx2.pending = null;
       }
     });
   }
@@ -326,7 +328,8 @@ var GridPlace = (function () {
   }
 
   function _commit(details) {
-    if (!_pending) return;
+    var ctx = _c();
+    if (!ctx || !ctx.pending) return;
     var cfg = GridCore.getConfig();
 
     var newTable = {
@@ -334,31 +337,33 @@ var GridPlace = (function () {
       name: details.name,
       seats: details.seats,
       status: details.status,
-      shape: _pending.shape,
-      col: _pending.col,
-      row: _pending.row,
-      colSpan: _pending.colSpan,
-      rowSpan: _pending.rowSpan,
+      shape: ctx.pending.shape,
+      col: ctx.pending.col,
+      row: ctx.pending.row,
+      colSpan: ctx.pending.colSpan,
+      rowSpan: ctx.pending.rowSpan,
     };
 
     GridCore.addTable(newTable);
-    jQuery(".tl-layout-grid").append(GridRender.buildTableCard(newTable));
+    _TL.$(".tl-layout-grid").append(GridRender.buildTableCard(newTable));
 
     if (typeof cfg.onTableCreated === "function") cfg.onTableCreated(newTable);
     if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
       cfg.onLayoutChange(GridCore.getLayout());
 
-    _pending = null;
+    ctx.pending = null;
     GridToolbar.deactivate();
   }
 
   function unbind() {
-    if (_placeTouchMoveHandler) {
-      document.removeEventListener("touchmove", _placeTouchMoveHandler);
-      _placeTouchMoveHandler = null;
+    var cid = _TL.cid();
+    var ctx = _inst[cid];
+    if (ctx && ctx.placeTouchMoveHandler) {
+      document.removeEventListener("touchmove", ctx.placeTouchMoveHandler);
+      ctx.placeTouchMoveHandler = null;
     }
-    jQuery(document).off(".tl");
+    jQuery(document).off(".tl-place-" + cid);
   }
 
-  return { bind: bind, unbind: unbind };
+  return { init: init, destroy: destroy, bind: bind, unbind: unbind };
 })();

@@ -1,91 +1,101 @@
 /**
  * GridCore.js
- * Pure state and logic — zero DOM, zero jQuery.
+ * Pure state and logic — zero DOM, zero jQuery (except deep-clone).
  * Two-tier hierarchy: layers → rooms → tables.
  * All other modules read/write state through this API.
+ * Per-instance state via _TL context.
  */
 var GridCore = (function () {
-  var _cfg = null;
-  var _tables = [];
-  var _counter = 1;
-  var _layers = null;
-  var _activeLayerId = null;
-  var _activeRoomId = null;
-  var _editMode = false;
-  var _snapshot = null;
+  var _inst = {};
+
+  function _c() { return _inst[_TL.cid()]; }
 
   // ── Setup ─────────────────────────────────────────
 
   function init(cfg) {
-    _cfg = cfg;
+    var id = cfg.containerId;
+    _inst[id] = {
+      cfg: cfg,
+      tables: [],
+      counter: 1,
+      layers: null,
+      activeLayerId: null,
+      activeRoomId: null,
+      editMode: false,
+      snapshot: null
+    };
+    var c = _inst[id];
+
     if (cfg.layers && cfg.layers.length) {
-      _layers = jQuery.extend(true, [], cfg.layers);
-      _layers.forEach(function (l) {
+      c.layers = jQuery.extend(true, [], cfg.layers);
+      c.layers.forEach(function (l) {
         if (!Array.isArray(l.rooms)) l.rooms = [];
         l.rooms.forEach(function (r) { if (!Array.isArray(r.tables)) r.tables = []; });
       });
-      _activeLayerId = _layers[0].id;
-      var firstRoom = _layers[0].rooms[0];
-      _activeRoomId = firstRoom ? firstRoom.id : null;
-      _tables = firstRoom ? jQuery.extend(true, [], firstRoom.tables) : [];
-    } else {
-      _layers = null;
-      _activeLayerId = null;
-      _activeRoomId = null;
-      _tables = [];
+      c.activeLayerId = c.layers[0].id;
+      var firstRoom = c.layers[0].rooms[0];
+      c.activeRoomId = firstRoom ? firstRoom.id : null;
+      c.tables = firstRoom ? jQuery.extend(true, [], firstRoom.tables) : [];
     }
-    _counter = _tables.length + 1;
+    c.counter = c.tables.length + 1;
   }
 
   function reset() {
-    _cfg = null;
-    _tables = [];
-    _counter = 1;
-    _layers = null;
-    _activeLayerId = null;
-    _activeRoomId = null;
-    _editMode = false;
-    _snapshot = null;
+    var c = _c();
+    if (!c) return;
+    c.cfg = null;
+    c.tables = [];
+    c.counter = 1;
+    c.layers = null;
+    c.activeLayerId = null;
+    c.activeRoomId = null;
+    c.editMode = false;
+    c.snapshot = null;
+  }
+
+  function destroy() {
+    delete _inst[_TL.cid()];
   }
 
   // ── Config ────────────────────────────────────────
 
   function getConfig() {
-    return _cfg;
+    return _c().cfg;
   }
 
   // ── Tables ────────────────────────────────────────
 
   function getTables() {
-    return _tables;
+    return _c().tables;
   }
   function getCounter() {
-    return _counter;
+    return _c().counter;
   }
   function bumpCounter() {
-    _counter++;
+    _c().counter++;
   }
 
   function tableById(id) {
     return (
-      _tables.find(function (t) {
+      _c().tables.find(function (t) {
         return t.id === id;
       }) || null
     );
   }
 
   function addTable(table) {
-    _tables.push(table);
+    _c().tables.push(table);
     bumpCounter();
     GridEvents.emit("table:added", table);
   }
 
   function removeTable(id) {
-    var idx = _tables.findIndex(function (t) {
+    var tables = _c().tables;
+    var idx = tables.findIndex(function (t) {
       return t.id === id;
     });
     if (idx === -1) return false;
-    var removed = _tables.splice(idx, 1)[0];
+    var removed = tables.splice(idx, 1)[0];
     GridEvents.emit("table:removed", removed);
     return true;
   }
@@ -105,55 +115,57 @@ var GridCore = (function () {
   // ── Layer management (top-tier tabs) ───────────────
 
   function getLayers() {
-    return _layers || [];
+    return _c().layers || [];
   }
 
   function getActiveLayerId() {
-    return _activeLayerId;
+    return _c().activeLayerId;
   }
 
   function getActiveLayer() {
-    if (!_layers) return null;
-    return _layers.find(function (l) { return l.id === _activeLayerId; }) || null;
+    var c = _c();
+    if (!c.layers) return null;
+    return c.layers.find(function (l) { return l.id === c.activeLayerId; }) || null;
   }
 
   function switchLayer(id) {
-    if (!_layers) return false;
-    if (_editMode) return false;
-    // Save current tables into active room
+    var c = _c();
+    if (!c.layers) return false;
+    if (c.editMode) return false;
     _saveCurrentTables();
-    var target = _layers.find(function (l) { return l.id === id; });
+    var target = c.layers.find(function (l) { return l.id === id; });
     if (!target) return false;
-    _activeLayerId = id;
-    // Load first room of the new layer
+    c.activeLayerId = id;
     var firstRoom = target.rooms[0];
-    _activeRoomId = firstRoom ? firstRoom.id : null;
-    _tables = firstRoom ? jQuery.extend(true, [], firstRoom.tables) : [];
-    _counter = _tables.length + 1;
+    c.activeRoomId = firstRoom ? firstRoom.id : null;
+    c.tables = firstRoom ? jQuery.extend(true, [], firstRoom.tables) : [];
+    c.counter = c.tables.length + 1;
     GridEvents.emit("layer:switched", target);
     GridEvents.emit("room:switched", firstRoom || null);
     return true;
   }
 
   function addLayer(layer) {
-    if (!_layers) _layers = [];
+    var c = _c();
+    if (!c.layers) c.layers = [];
     if (!Array.isArray(layer.rooms)) layer.rooms = [];
-    _layers.push(layer);
+    c.layers.push(layer);
     GridEvents.emit("layer:added", layer);
   }
 
   function deleteLayer(id) {
-    if (!_layers || _layers.length <= 1) return false;
-    var idx = _layers.findIndex(function (l) { return l.id === id; });
+    var c = _c();
+    if (!c.layers || c.layers.length <= 1) return false;
+    var idx = c.layers.findIndex(function (l) { return l.id === id; });
     if (idx === -1) return false;
-    var removed = _layers.splice(idx, 1)[0];
-    if (_activeLayerId === id) {
-      var next = _layers[Math.min(idx, _layers.length - 1)];
-      _activeLayerId = next.id;
+    var removed = c.layers.splice(idx, 1)[0];
+    if (c.activeLayerId === id) {
+      var next = c.layers[Math.min(idx, c.layers.length - 1)];
+      c.activeLayerId = next.id;
       var firstRoom = next.rooms[0];
-      _activeRoomId = firstRoom ? firstRoom.id : null;
-      _tables = firstRoom ? jQuery.extend(true, [], firstRoom.tables) : [];
-      _counter = _tables.length + 1;
+      c.activeRoomId = firstRoom ? firstRoom.id : null;
+      c.tables = firstRoom ? jQuery.extend(true, [], firstRoom.tables) : [];
+      c.counter = c.tables.length + 1;
       GridEvents.emit("layer:switched", next);
       GridEvents.emit("room:switched", firstRoom || null);
     }
@@ -162,24 +174,26 @@ var GridCore = (function () {
   }
 
   function reorderLayers(orderedIds) {
-    if (!_layers || !orderedIds) return false;
+    var c = _c();
+    if (!c.layers || !orderedIds) return false;
     var map = {};
-    _layers.forEach(function (l) { map[l.id] = l; });
+    c.layers.forEach(function (l) { map[l.id] = l; });
     var reordered = [];
     orderedIds.forEach(function (id) {
       if (map[id]) reordered.push(map[id]);
     });
-    _layers.forEach(function (l) {
+    c.layers.forEach(function (l) {
       if (reordered.indexOf(l) === -1) reordered.push(l);
     });
-    _layers = reordered;
-    GridEvents.emit("layer:reordered", _layers);
+    c.layers = reordered;
+    GridEvents.emit("layer:reordered", c.layers);
     return true;
   }
 
   function updateLayerMeta(id, props) {
-    if (!_layers) return false;
-    var layer = _layers.find(function (l) { return l.id === id; });
+    var c = _c();
+    if (!c.layers) return false;
+    var layer = c.layers.find(function (l) { return l.id === id; });
     if (!layer) return false;
     if (props.label !== undefined) layer.label = props.label;
     GridEvents.emit("layer:updated", layer);
@@ -194,27 +208,28 @@ var GridCore = (function () {
   }
 
   function getActiveRoomId() {
-    return _activeRoomId;
+    return _c().activeRoomId;
   }
 
   function getActiveRoom() {
     var layer = getActiveLayer();
     _saveCurrentTables();
     if (!layer) return null;
-    return layer.rooms.find(function (r) { return r.id === _activeRoomId; }) || null;
+    return layer.rooms.find(function (r) { return r.id === _c().activeRoomId; }) || null;
   }
 
   function switchRoom(id) {
-    if (!_layers) return false;
-    if (_editMode) return false;
+    var c = _c();
+    if (!c.layers) return false;
+    if (c.editMode) return false;
     var layer = getActiveLayer();
     if (!layer) return false;
     _saveCurrentTables();
     var target = layer.rooms.find(function (r) { return r.id === id; });
     if (!target) return false;
-    _activeRoomId = id;
-    _tables = jQuery.extend(true, [], target.tables);
-    _counter = _tables.length + 1;
+    c.activeRoomId = id;
+    c.tables = jQuery.extend(true, [], target.tables);
+    c.counter = c.tables.length + 1;
     GridEvents.emit("room:switched", target);
     return true;
   }
@@ -228,16 +243,17 @@ var GridCore = (function () {
   }
 
   function deleteRoom(id) {
+    var c = _c();
     var layer = getActiveLayer();
     if (!layer || layer.rooms.length <= 1) return false;
     var idx = layer.rooms.findIndex(function (r) { return r.id === id; });
     if (idx === -1) return false;
     var removed = layer.rooms.splice(idx, 1)[0];
-    if (_activeRoomId === id) {
+    if (c.activeRoomId === id) {
       var next = layer.rooms[Math.min(idx, layer.rooms.length - 1)];
-      _activeRoomId = next.id;
-      _tables = jQuery.extend(true, [], next.tables);
-      _counter = _tables.length + 1;
+      c.activeRoomId = next.id;
+      c.tables = jQuery.extend(true, [], next.tables);
+      c.counter = c.tables.length + 1;
       GridEvents.emit("room:switched", next);
     }
     GridEvents.emit("room:deleted", removed);
@@ -275,56 +291,59 @@ var GridCore = (function () {
   // ── Helper: save current tables into active room ──
 
   function _saveCurrentTables() {
+    var c = _c();
     var layer = getActiveLayer();
     if (!layer) return;
-    var room = layer.rooms.find(function (r) { return r.id === _activeRoomId; });
-    if (room) room.tables = jQuery.extend(true, [], _tables);
+    var room = layer.rooms.find(function (r) { return r.id === c.activeRoomId; });
+    if (room) room.tables = jQuery.extend(true, [], c.tables);
   }
 
   function getAllLayersLayout() {
-    if (!_layers) return null;
+    var c = _c();
+    if (!c.layers) return null;
     _saveCurrentTables();
-    return _layers.map(function (l) { return jQuery.extend(true, {}, l); });
+    return c.layers.map(function (l) { return jQuery.extend(true, {}, l); });
   }
 
   // ── Edit mode ─────────────────────────────────────
 
   function isEditing() {
-    if (_cfg && _cfg.mode === 'edit') return true;
-    return _editMode;
+    return _c().editMode;
   }
 
   function enterEditMode() {
-    if (_editMode) return;
+    var c = _c();
+    if (c.editMode) return;
     _saveCurrentTables();
-    _snapshot = {
-      tables: jQuery.extend(true, [], _tables),
-      layers: _layers ? jQuery.extend(true, [], _layers) : null,
-      activeLayerId: _activeLayerId,
-      activeRoomId: _activeRoomId,
+    c.snapshot = {
+      tables: jQuery.extend(true, [], c.tables),
+      layers: c.layers ? jQuery.extend(true, [], c.layers) : null,
+      activeLayerId: c.activeLayerId,
+      activeRoomId: c.activeRoomId,
     };
-    _editMode = true;
+    c.editMode = true;
     GridEvents.emit("edit:enter");
   }
 
   function saveEdit() {
-    if (!_editMode) return;
-    _snapshot = null;
-    _editMode = false;
+    var c = _c();
+    if (!c.editMode) return;
+    c.snapshot = null;
+    c.editMode = false;
     GridEvents.emit("edit:saved");
     GridEvents.emit("edit:exit");
   }
 
   function discardEdit() {
-    if (!_editMode) return;
-    // Restore full layers tree
-    _layers = _snapshot.layers ? jQuery.extend(true, [], _snapshot.layers) : null;
-    _activeLayerId = _snapshot.activeLayerId;
-    _activeRoomId = _snapshot.activeRoomId;
-    _tables = jQuery.extend(true, [], _snapshot.tables);
-    _counter = _tables.length + 1;
-    _snapshot = null;
-    _editMode = false;
+    var c = _c();
+    if (!c.editMode) return;
+    c.layers = c.snapshot.layers ? jQuery.extend(true, [], c.snapshot.layers) : null;
+    c.activeLayerId = c.snapshot.activeLayerId;
+    c.activeRoomId = c.snapshot.activeRoomId;
+    c.tables = jQuery.extend(true, [], c.snapshot.tables);
+    c.counter = c.tables.length + 1;
+    c.snapshot = null;
+    c.editMode = false;
     var restoredRoom = getActiveRoom();
     if (restoredRoom) GridEvents.emit("room:updated", restoredRoom);
     var restoredLayer = getActiveLayer();
@@ -333,19 +352,10 @@ var GridCore = (function () {
     GridEvents.emit("edit:exit");
   }
 
-  function updateLayerMeta(id, props) {
-    if (!_layers) return false;
-    var layer = _layers.find(function (l) { return l.id === id; });
-    if (!layer) return false;
-    if (props.label !== undefined) layer.label = props.label;
-    GridEvents.emit("layer:updated", layer);
-    return true;
-  }
-
   // ── Layout snapshot ───────────────────────────────
 
   function getLayout() {
-    return _tables.map(function (t) {
+    return _c().tables.map(function (t) {
       return jQuery.extend({}, t);
     });
   }
@@ -353,13 +363,14 @@ var GridCore = (function () {
   // ── Collision ─────────────────────────────────────
 
   function hasCollision(col, row, colSpan, rowSpan, excludeId) {
+    var c = _c();
     if (col < 1 || row < 1) return true;
-    if (col + colSpan - 1 > _cfg.columns) return true;
-    if (row + rowSpan - 1 > _cfg.rows) return true;
+    if (col + colSpan - 1 > c.cfg.columns) return true;
+    if (row + rowSpan - 1 > c.cfg.rows) return true;
 
     var excludeIds = Array.isArray(excludeId) ? excludeId : (excludeId ? [excludeId] : []);
 
-    return _tables.some(function (t) {
+    return c.tables.some(function (t) {
       if (excludeIds.indexOf(t.id) !== -1) return false;
       return !(
         col + colSpan <= t.col ||
@@ -373,7 +384,8 @@ var GridCore = (function () {
   // ── Span calculation ──────────────────────────────
 
   function calcSpan(start, end, shapeKey) {
-    var shapeDef = (_cfg.shapes || {})[shapeKey] || {};
+    var cfg = _c().cfg;
+    var shapeDef = (cfg.shapes || {})[shapeKey] || {};
     var minC = shapeDef.minCols || 1;
     var minR = shapeDef.minRows || 1;
     var square = shapeDef.preferSquare || false;
@@ -395,7 +407,8 @@ var GridCore = (function () {
   // ── Shape helpers ─────────────────────────────────
 
   function getShapeStyles(shapeKey) {
-    var shapeDef = (_cfg.shapes || {})[shapeKey] || {};
+    var cfg = _c().cfg;
+    var shapeDef = (cfg.shapes || {})[shapeKey] || {};
     return {
       clipPath: shapeDef.clipPath || "none",
       borderRadius: shapeDef.borderRadius || "8px",
@@ -405,15 +418,16 @@ var GridCore = (function () {
   // ── Coordinate helpers ────────────────────────────
 
   function pxToGrid(offsetX, offsetY) {
-    var unit = _cfg.cellSize + _cfg.gap;
+    var cfg = _c().cfg;
+    var unit = cfg.cellSize + cfg.gap;
     return {
-      col: Math.max(1, Math.min(_cfg.columns, Math.floor(offsetX / unit) + 1)),
-      row: Math.max(1, Math.min(_cfg.rows, Math.floor(offsetY / unit) + 1)),
+      col: Math.max(1, Math.min(cfg.columns, Math.floor(offsetX / unit) + 1)),
+      row: Math.max(1, Math.min(cfg.rows, Math.floor(offsetY / unit) + 1)),
     };
   }
 
   function cursorToGrid(clientX, clientY) {
-    var gridEl = jQuery(".tl-layout-grid")[0];
+    var gridEl = _TL.$(".tl-layout-grid")[0];
     if (!gridEl) return { col: 1, row: 1 };
     var rect = gridEl.getBoundingClientRect();
     var scaleX = rect.width / (gridEl.offsetWidth || 1);
@@ -446,6 +460,7 @@ var GridCore = (function () {
   return {
     init: init,
     reset: reset,
+    destroy: destroy,
     getConfig: getConfig,
     getTables: getTables,
     getLayout: getLayout,

@@ -1,43 +1,54 @@
 /**
  * GridEvents.js
- * Internal pub/sub event bus.
+ * Internal pub/sub event bus — per-instance.
  * Modules communicate through events — not direct calls.
- * This keeps modules decoupled and makes it easy to add
- * new modules without touching existing ones.
  *
  * Usage:
  *   GridEvents.on('table:created', function(table) { ... });
  *   GridEvents.emit('table:created', newTable);
  */
 var GridEvents = (function () {
-  var _listeners = {};
+  var _inst = {};
+
+  function _ctx() {
+    var id = _TL.cid();
+    if (!_inst[id]) _inst[id] = {};
+    return _inst[id];
+  }
 
   function on(event, callback) {
-    if (!_listeners[event]) _listeners[event] = [];
-    _listeners[event].push(callback);
+    var L = _ctx();
+    if (!L[event]) L[event] = [];
+    L[event].push(callback);
   }
 
   function off(event, callback) {
-    if (!_listeners[event]) return;
+    var L = _ctx();
+    if (!L[event]) return;
     if (!callback) {
-      _listeners[event] = [];
+      L[event] = [];
     } else {
-      _listeners[event] = _listeners[event].filter(function (cb) {
+      L[event] = L[event].filter(function (cb) {
         return cb !== callback;
       });
     }
   }
 
   function emit(event, data) {
-    if (!_listeners[event]) return;
-    _listeners[event].forEach(function (cb) {
+    var L = _ctx();
+    if (!L[event]) return;
+    L[event].forEach(function (cb) {
       cb(data);
     });
   }
 
   function reset() {
-    _listeners = {};
+    _inst[_TL.cid()] = {};
   }
 
-  return { on: on, off: off, emit: emit, reset: reset };
+  function destroy() {
+    delete _inst[_TL.cid()];
+  }
+
+  return { on: on, off: off, emit: emit, reset: reset, destroy: destroy };
 })();

@@ -2,20 +2,16 @@
  * TableLayout.js
  * ─────────────────────────────────────────────────────────────────
  * Public API — this is the only object the user ever touches.
+ * Supports multiple independent instances on the same page.
  *
- * Usage in .NET MVC view:
+ * Usage:
  *
- *   var layout = TableLayout.create({
- *       containerId : 'myDiv',
- *       columns     : 12,
- *       rows        : 8,
- *       tables      : [...],
- *       onLayoutChange: function(layout) { ... }
- *   });
+ *   var layout1 = TableLayout.create({ containerId: 'div1', ... });
+ *   var layout2 = TableLayout.create({ containerId: 'div2', ... });
  *
- *   layout.zoomIn();
- *   layout.getLayout();
- *   layout.destroy();
+ *   layout1.zoomIn();
+ *   layout2.getLayout();
+ *   layout1.destroy();
  */
 var TableLayout = (function () {
   function create(userConfig) {
@@ -26,19 +22,30 @@ var TableLayout = (function () {
 
     // ── Guard: container must exist ────────────────
     var cfg = GridConfig.merge(userConfig);
-    if (!jQuery("#" + cfg.containerId).length) {
+    var cid = cfg.containerId;
+    if (!jQuery("#" + cid).length) {
       throw new Error(
-        "[TableLayout] Container #" + cfg.containerId + " not found in DOM.",
+        "[TableLayout] Container #" + cid + " not found in DOM.",
       );
     }
 
-    // ── Boot ───────────────────────────────────────
+    // ── Set context to this instance ───────────────
+    _TL.use(cid);
+
+    // ── Boot core modules ──────────────────────────
     GridEvents.reset();
     GridCore.init(cfg);
     GridZoom.init(cfg.zoom.initial || 1);
+    GridFullscreen.init();
+    GridToolbar.init();
+    GridDrag.init();
+    GridResize.init();
+    GridMultiSelect.init();
+    GridPlace.init();
+    GridRooms.init();
 
     // ── Build DOM ──────────────────────────────────
-    var $container = jQuery("#" + cfg.containerId)
+    var $container = jQuery("#" + cid)
       .empty()
       .addClass("tl-root");
 
@@ -99,14 +106,17 @@ var TableLayout = (function () {
     });
     // Layer events
     GridEvents.on("layer:switched", function (layer) {
+      _TL.use(cid);
       if (typeof cfg.onLayerChange === "function")
         cfg.onLayerChange(layer, GridCore.getAllLayersLayout());
     });
     GridEvents.on("layer:updated", function (layer) {
+      _TL.use(cid);
       if (typeof cfg.onLayerChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
         cfg.onLayerChange(layer, GridCore.getAllLayersLayout());
     });
     GridEvents.on("layer:deleted", function (removed) {
+      _TL.use(cid);
       if (typeof cfg.onLayerDelete === "function")
         cfg.onLayerDelete(removed);
       if (typeof cfg.onLayerChange === "function")
@@ -118,14 +128,17 @@ var TableLayout = (function () {
     });
     // Room events
     GridEvents.on("room:switched", function (room) {
+      _TL.use(cid);
       if (typeof cfg.onRoomChange === "function")
         cfg.onRoomChange(room, GridCore.getLayout());
     });
     GridEvents.on("room:updated", function (room) {
+      _TL.use(cid);
       if (typeof cfg.onRoomChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
         cfg.onRoomChange(room, GridCore.getLayout());
     });
     GridEvents.on("room:deleted", function (removed) {
+      _TL.use(cid);
       if (typeof cfg.onRoomDelete === "function")
         cfg.onRoomDelete(removed);
       if (typeof cfg.onRoomChange === "function")
@@ -140,45 +153,57 @@ var TableLayout = (function () {
     return {
       // Zoom
       zoomIn: function () {
+        _TL.use(cid);
         GridZoom.applyZoom(GridZoom.getZoom() + (cfg.zoom.step || 0.1));
       },
       zoomOut: function () {
+        _TL.use(cid);
         GridZoom.applyZoom(GridZoom.getZoom() - (cfg.zoom.step || 0.1));
       },
       zoomReset: function () {
+        _TL.use(cid);
         GridZoom.applyZoom(cfg.zoom.initial || 1);
       },
       zoomTo: function (l) {
+        _TL.use(cid);
         GridZoom.applyZoom(l);
       },
       getZoom: function () {
+        _TL.use(cid);
         return GridZoom.getZoom();
       },
 
       // Data
       getLayout: function () {
+        _TL.use(cid);
         return GridCore.getLayout();
       },
       getTables: function () {
+        _TL.use(cid);
         return GridCore.getTables();
       },
       getConfig: function () {
+        _TL.use(cid);
         return GridCore.getConfig();
       },
 
       // Layers
       getLayers: function () {
+        _TL.use(cid);
         return GridCore.getLayers();
       },
       getActiveLayer: function () {
+        _TL.use(cid);
         return GridCore.getActiveLayer();
       },
       switchLayer: function (id) {
+        _TL.use(cid);
         if (GridCore.switchLayer(id)) {
-          jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+          _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
         }
       },
       addLayer: function (details) {
+        _TL.use(cid);
         var label = (details && details.label) || "Layout";
         var firstRoom = {
           id: "room-" + Date.now(),
@@ -195,28 +220,35 @@ var TableLayout = (function () {
         return layer;
       },
       deleteLayer: function (id) {
+        _TL.use(cid);
         return GridCore.deleteLayer(id);
       },
       reorderLayers: function (orderedIds) {
+        _TL.use(cid);
         return GridCore.reorderLayers(orderedIds);
       },
       getAllLayersLayout: function () {
+        _TL.use(cid);
         return GridCore.getAllLayersLayout();
       },
 
       // Rooms
       getRooms: function () {
+        _TL.use(cid);
         return GridCore.getRooms();
       },
       getActiveRoom: function () {
+        _TL.use(cid);
         return GridCore.getActiveRoom();
       },
       switchRoom: function (id) {
+        _TL.use(cid);
         if (GridCore.switchRoom(id)) {
-          jQuery(".tl-zoom-area").empty().append(GridRender.buildGrid());
+          _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
         }
       },
       addRoom: function (details) {
+        _TL.use(cid);
         var label = (details && details.label) || "Room";
         var room = {
           id: "room-" + Date.now(),
@@ -228,38 +260,54 @@ var TableLayout = (function () {
         return room;
       },
       deleteRoom: function (id) {
+        _TL.use(cid);
         return GridCore.deleteRoom(id);
       },
       reorderRooms: function (orderedIds) {
+        _TL.use(cid);
         return GridCore.reorderRooms(orderedIds);
       },
 
       // Edit mode
       isEditing: function () {
+        _TL.use(cid);
         return GridCore.isEditing();
       },
 
       // Tools
       setTool: function (key) {
+        _TL.use(cid);
         GridToolbar.toggle(key);
       },
       clearTool: function () {
+        _TL.use(cid);
         GridToolbar.deactivate();
       },
       getActiveTool: function () {
+        _TL.use(cid);
         return GridToolbar.getActive();
       },
 
       // Lifecycle
       destroy: function () {
+        _TL.use(cid);
         GridDrag.unbind();
+        GridResize.unbind();
+        GridMultiSelect.unbind();
         GridPlace.unbind();
-        jQuery("#" + cfg.containerId)
-          .off(".tl")
+        GridZoom.destroy();
+        GridFullscreen.destroy();
+        GridToolbar.destroy();
+        GridRooms.destroy();
+        GridDrag.destroy();
+        GridResize.destroy();
+        GridMultiSelect.destroy();
+        GridPlace.destroy();
+        jQuery("#" + cid)
           .empty()
-          .removeClass("tl-root");
-        GridEvents.reset();
-        GridCore.reset();
+          .removeClass("tl-root tl-view-mode");
+        GridEvents.destroy();
+        GridCore.destroy();
       },
     };
   }

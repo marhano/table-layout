@@ -17,7 +17,7 @@ var GridConfig = (function () {
     swapAnimation: true,
     showSizeBadge: true,
     showHint: false,
-    mode: 'edit', // 'edit' or 'view' — view mode hides all controls and drag handles, for a clean presentation layer
+    mode: 'edit', // 'edit' or 'view' — determines whether the 'Edit Layout' option appears in the settings popup
     realTime: false,
 
     theme: {

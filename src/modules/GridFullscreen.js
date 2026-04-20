@@ -1,5 +1,17 @@
 var GridFullscreen = (function () {
-  var _isFullscreen = false;
+  var _inst = {};
+
+  function _c() { return _inst[_TL.cid()]; }
+
+  function init() {
+    _inst[_TL.cid()] = { isFullscreen: false };
+  }
+
+  function destroy() {
+    var cid = _TL.cid();
+    jQuery(document).off("keydown.tl-fullscreen-" + cid);
+    delete _inst[cid];
+  }
 
   function buildButton() {
     var cfg = GridCore.getConfig();
@@ -16,7 +28,7 @@ var GridFullscreen = (function () {
   }
 
   function toggle() {
-    if (_isFullscreen) {
+    if (_c().isFullscreen) {
       exit();
     } else {
       enter();
@@ -24,53 +36,52 @@ var GridFullscreen = (function () {
   }
 
   function enter() {
-    var $root = jQuery(".tl-root").first();
+    var $root = jQuery("#" + _TL.cid());
     if (!$root.length) return;
 
     $root.addClass("tl-fullscreen");
-    _isFullscreen = true;
+    _c().isFullscreen = true;
 
-    // Update button icon
     $root.find(".tl-zoom-btn-fullscreen i")
       .removeClass("fa-expand")
       .addClass("fa-compress");
 
-    // Recalculate zoom area
     GridZoom.applyZoom(GridZoom.getZoom(), true);
     GridEvents.emit("fullscreen:changed", true);
   }
 
   function exit() {
-    var $root = jQuery(".tl-root").first();
+    var $root = jQuery("#" + _TL.cid());
     if (!$root.length) return;
 
     $root.removeClass("tl-fullscreen");
-    _isFullscreen = false;
+    _c().isFullscreen = false;
 
-    // Update button icon
     $root.find(".tl-zoom-btn-fullscreen i")
       .removeClass("fa-compress")
       .addClass("fa-expand");
 
-    // Recalculate zoom area
     GridZoom.applyZoom(GridZoom.getZoom(), true);
     GridEvents.emit("fullscreen:changed", false);
   }
 
   function bind() {
-    // Exit fullscreen on Escape key
-    jQuery(document).on("keydown.tl-fullscreen", function (e) {
-      if (e.key === "Escape" && _isFullscreen) {
+    var cid = _TL.cid();
+    jQuery(document).on("keydown.tl-fullscreen-" + cid, function (e) {
+      if (e.key === "Escape" && _inst[cid] && _inst[cid].isFullscreen) {
+        _TL.use(cid);
         exit();
       }
     });
   }
 
   function isFullscreen() {
-    return _isFullscreen;
+    return _c().isFullscreen;
   }
 
   return {
+    init: init,
+    destroy: destroy,
     buildButton: buildButton,
     bind: bind,
     toggle: toggle,

@@ -6,7 +6,7 @@ var GridHelp = (function () {
 
   function show() {
     // Remove any existing help modal
-    jQuery(".tl-help-overlay").remove();
+    jQuery("#" + _TL.cid()).find(".tl-help-overlay").remove();
 
     var $overlay = jQuery("<div>").addClass("tl-overlay tl-help-overlay");
     var $modal = jQuery("<div>").addClass("tl-modal tl-help-modal");
@@ -89,7 +89,7 @@ var GridHelp = (function () {
     $modal.append($footer);
 
     $overlay.append($modal);
-    jQuery(".tl-root").first().append($overlay);
+    jQuery("#" + _TL.cid()).append($overlay);
 
     // Close on overlay click
     $overlay.on("click", function (e) {
