@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-20T08:09:22.983Z
+ * Built: 2026-04-20T08:55:36.966Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -1786,8 +1786,9 @@ var GridToolbar = (function () {
       );
     }
 
-    // Settings gear — visible only when NOT in edit mode
-    if (cfg.realTime !== false || !GridCore.isEditing()) {
+    // Settings gear — visible only when NOT in edit mode and has options
+    var hasSettingsOptions = cfg.realTime === false && cfg.mode !== "view" && !GridCore.isEditing();
+    if ((cfg.realTime !== false || !GridCore.isEditing()) && hasSettingsOptions) {
       var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
       var $settingsBtn = jQuery("<button>")
         .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
