@@ -119,6 +119,17 @@ var GridRender = (function () {
       );
     }
 
+    // ── Click event (view mode only — not when editing) ──
+    (function (tableId) {
+      $card.on('click', function (e) {
+        if (GridCore.isEditing() || cfg.realTime !== false) return;
+        if (typeof cfg.onTableClick === 'function') {
+          var tbl = GridCore.tableById(tableId);
+          if (tbl) cfg.onTableClick(tbl);
+        }
+      });
+    })(t.id);
+
     // ── Edit button (visible in edit mode) ──
     if (cfg.realTime !== false || GridCore.isEditing()) {
       var tableId = t.id;

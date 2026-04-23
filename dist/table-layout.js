@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-04-20T08:55:36.966Z
+ * Built: 2026-04-23T01:46:22.463Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -186,6 +186,7 @@ var GridConfig = (function () {
     onRoomDelete: null, // fn(removedRoom) — fired when a room is deleted
     onRoomReorder: null, // fn(rooms) — fired when rooms are reordered
     onCreateRoom: null, // fn(commit) — override the default add-room form; call commit({label, icon})
+    onTableClick: null, // fn(table) — fired when a table card is clicked (view mode only, not during edit)
   };
 
   /**
@@ -936,6 +937,17 @@ var GridRender = (function () {
           .text(t.colSpan + "×" + t.rowSpan),
       );
     }
+
+    // ── Click event (view mode only — not when editing) ──
+    (function (tableId) {
+      $card.on('click', function (e) {
+        if (GridCore.isEditing() || cfg.realTime !== false) return;
+        if (typeof cfg.onTableClick === 'function') {
+          var tbl = GridCore.tableById(tableId);
+          if (tbl) cfg.onTableClick(tbl);
+        }
+      });
+    })(t.id);
 
     // ── Edit button (visible in edit mode) ──
     if (cfg.realTime !== false || GridCore.isEditing()) {

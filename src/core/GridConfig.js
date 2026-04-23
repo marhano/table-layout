@@ -18,7 +18,6 @@ var GridConfig = (function () {
     showSizeBadge: true,
     showHint: false,
     mode: 'edit', // 'edit' or 'view' — determines whether the 'Edit Layout' option appears in the settings popup
-    realTime: false,
 
     theme: {
       // Primary accent — buttons, active states, focus rings, layer switcher
@@ -145,6 +144,7 @@ var GridConfig = (function () {
     onRoomDelete: null, // fn(removedRoom) — fired when a room is deleted
     onRoomReorder: null, // fn(rooms) — fired when rooms are reordered
     onCreateRoom: null, // fn(commit) — override the default add-room form; call commit({label, icon})
+    onTableClick: null, // fn(table) — fired when a table card is clicked (view mode only, not during edit)
   };
 
   /**
