@@ -275,6 +275,60 @@ var TableLayout = (function () {
         return GridCore.isEditing();
       },
 
+      // Update config in place without recreating the instance
+      update: function (newConfig) {
+        _TL.use(cid);
+
+        var needsLayoutRebuild = newConfig.columns !== undefined ||
+                                 newConfig.rows    !== undefined ||
+                                 newConfig.cellSize !== undefined ||
+                                 newConfig.gap     !== undefined ||
+                                 newConfig.layers  !== undefined;
+
+        // Merge newConfig into the live cfg object in place
+        for (var key in newConfig) {
+          if (!newConfig.hasOwnProperty(key)) continue;
+          var val = newConfig[key];
+          if (
+            val !== null &&
+            typeof val === "object" &&
+            !Array.isArray(val) &&
+            typeof cfg[key] === "object" &&
+            cfg[key] !== null &&
+            !Array.isArray(cfg[key])
+          ) {
+            jQuery.extend(cfg[key], val);
+          } else {
+            cfg[key] = val;
+          }
+        }
+
+        // Re-apply theme CSS custom properties
+        if (newConfig.theme !== undefined) {
+          jQuery.each(cfg.theme, function (k, v) {
+            jQuery("#" + cid)[0].style.setProperty("--tl-" + camelToKebab(k), v);
+          });
+        }
+
+        // Reinitialize core + rebuild grid for structural changes
+        if (needsLayoutRebuild) {
+          GridCore.init(cfg);
+          _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
+          GridLayers.renderTabs();
+          GridRooms.renderTabs();
+        }
+
+        // Rebuild legend when status colours change
+        if (newConfig.statusColors !== undefined) {
+          _TL.$(".tl-legend").replaceWith(GridRender.buildLegend());
+        }
+
+        // Toggle view-mode class
+        if (newConfig.realTime !== undefined) {
+          jQuery("#" + cid).toggleClass("tl-view-mode", newConfig.realTime === false);
+        }
+      },
+
       // Tools
       setTool: function (key) {
         _TL.use(cid);
