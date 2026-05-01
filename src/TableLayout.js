@@ -368,5 +368,65 @@ var TableLayout = (function () {
     };
   }
 
-  return { create: create };
+  // Predefined table positions (deterministic, no layout jitter on re-render)
+  var _skeletonPositions = [
+    { top: "8%",  left: "5%",  w: 90,  h: 60 },
+    { top: "8%",  left: "22%", w: 110, h: 60 },
+    { top: "8%",  left: "44%", w: 80,  h: 60 },
+    { top: "8%",  left: "60%", w: 130, h: 60 },
+    { top: "8%",  left: "82%", w: 80,  h: 60 },
+    { top: "36%", left: "5%",  w: 110, h: 80 },
+    { top: "36%", left: "28%", w: 80,  h: 80 },
+    { top: "36%", left: "50%", w: 110, h: 60 },
+    { top: "36%", left: "72%", w: 80,  h: 80 },
+    { top: "65%", left: "8%",  w: 130, h: 60 },
+    { top: "65%", left: "36%", w: 80,  h: 60 },
+    { top: "65%", left: "56%", w: 110, h: 80 },
+    { top: "65%", left: "80%", w: 70,  h: 60 },
+  ];
+
+  function skeleton(containerId, options) {
+    if (typeof jQuery === "undefined") return;
+    var $container = jQuery("#" + containerId);
+    if (!$container.length) return;
+
+    var opts        = options || {};
+    var height      = opts.height      || "400px";
+    var tabs        = opts.tabs        || 2;
+    var roomTabs    = opts.roomTabs    || 3;
+    var tables      = Math.min(opts.tables !== undefined ? opts.tables : 10, _skeletonPositions.length);
+
+    // Toolbar
+    var $toolbar = jQuery("<div>").addClass("tl-skeleton-toolbar");
+    for (var t = 0; t < tabs; t++) {
+      $toolbar.append(
+        jQuery("<div>").addClass("tl-skeleton-bone tl-skeleton-tab").css("width", (55 + t * 25) + "px")
+      );
+    }
+
+    // Canvas with fake table cards
+    var $canvas = jQuery("<div>").addClass("tl-skeleton-canvas").css("height", height);
+    for (var i = 0; i < tables; i++) {
+      var p = _skeletonPositions[i];
+      $canvas.append(
+        jQuery("<div>").addClass("tl-skeleton-bone tl-skeleton-table").css({
+          top: p.top, left: p.left, width: p.w + "px", height: p.h + "px",
+        })
+      );
+    }
+
+    // Room tab bar (simple style)
+    var $tabbar = jQuery("<div>").addClass("tl-skeleton-tabbar");
+    for (var r = 0; r < roomTabs; r++) {
+      $tabbar.append(
+        jQuery("<div>").addClass("tl-skeleton-bone tl-skeleton-room-tab").css("width", (60 + r * 20) + "px")
+      );
+    }
+
+    $container.empty().append(
+      jQuery("<div>").addClass("tl-root").append($toolbar, $canvas, $tabbar)
+    );
+  }
+
+  return { create: create, skeleton: skeleton };
 })();

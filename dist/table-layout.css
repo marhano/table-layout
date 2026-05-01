@@ -2078,3 +2078,71 @@
 .tl-edit-mode .tl-rooms-add-submit {
     visibility: visible;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   SKELETON / LOADING STATE
+   ───────────────────────────────────────────────────────────── */
+@keyframes tl-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.tl-skeleton-bone {
+  background: linear-gradient(
+    90deg,
+    #e2e8f0 25%,
+    #f1f5f9 50%,
+    #e2e8f0 75%
+  );
+  background-size: 200% 100%;
+  animation: tl-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.tl-skeleton-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  min-height: 56px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px 12px 0 0;
+  border-bottom: none;
+}
+
+.tl-skeleton-tab {
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.tl-skeleton-canvas {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+}
+
+.tl-skeleton-table {
+  position: absolute;
+  border-radius: 8px;
+}
+
+.tl-skeleton-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px 6px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+.tl-skeleton-room-tab {
+  height: 32px;
+  border-radius: 8px 8px 0 0;
+  flex-shrink: 0;
+}
