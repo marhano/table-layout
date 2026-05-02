@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-05-01T15:45:43.564Z
+ * Built: 2026-05-02T05:17:42.044Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -5005,6 +5005,7 @@ var TableLayout = (function () {
     }
 
     $container.append($wrapper);
+    $container.addClass("tl-mode-" + (cfg.mode || "edit"));
     if (cfg.realTime === false) $container.addClass("tl-view-mode");
     if (cfg.showGridLines === false) $container.addClass("tl-no-grid-lines");
 

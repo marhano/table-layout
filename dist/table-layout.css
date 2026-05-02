@@ -2049,41 +2049,92 @@
    VIEW / EDIT MODE
    ───────────────────────────────────────────────────────────── */
 
-/* ── View state (not actively editing) ── */
-
-/* Hide grid lines when not editing */
-.tl-view-mode .tl-canvas {
-    background-image: none;
-}
-
-/* Shape panel hidden (not just faded) — only meaningful during edit */
+/* Shape panel hidden in non-editing state */
 .tl-view-mode .tl-shape-panel {
     display: none;
 }
 
-/* Table cards are clickable in view mode (onTableClick) */
-.tl-view-mode .tl-table-card {
+/* ── mode: 'view' — pure read-only display ── */
+
+.tl-mode-view .tl-canvas {
+    background-image: none;
+}
+
+/* Tables are clickable (onTableClick fires) */
+.tl-mode-view .tl-table-card {
     cursor: pointer;
 }
 
-.tl-view-mode .tl-table-card:hover {
-    transform: none;
-    filter: none;
-}
-
-/* Cells are transparent — no visible grid structure in view mode */
-.tl-view-mode .tl-cell {
+/* Clean display — no grid structure */
+.tl-mode-view .tl-cell {
     background: transparent !important;
 }
 
-.tl-view-mode .tl-cell--empty:hover {
+.tl-mode-view .tl-cell--empty:hover {
     border-color: transparent;
     background: transparent !important;
 }
 
-/* ── Edit state ── */
+/* ── mode: 'edit' in view state (before Edit Layout is clicked) ── */
 
-/* Edit mode: room panel locks */
+.tl-mode-edit.tl-view-mode .tl-canvas {
+    background-image: none;
+}
+
+/* Tables are not interactive — layout is for reference only */
+.tl-mode-edit.tl-view-mode .tl-table-card {
+    cursor: default;
+}
+
+.tl-mode-edit.tl-view-mode .tl-table-card:hover {
+    transform: none;
+    filter: none;
+}
+
+/* Dim overlay — covers canvas area on hover */
+.tl-mode-edit.tl-view-mode .tl-canvas-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.22);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 18;
+    border-radius: 12px;
+}
+
+.tl-mode-edit.tl-view-mode .tl-canvas-wrap:hover::before {
+    opacity: 1;
+}
+
+/* Tooltip — appears at bottom of canvas on hover */
+.tl-mode-edit.tl-view-mode .tl-canvas-wrap::after {
+    content: 'Setup mode — click "Edit Layout" in settings to arrange tables';
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    background: rgba(15, 23, 42, 0.92);
+    color: #f8fafc;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 20;
+}
+
+.tl-mode-edit.tl-view-mode .tl-canvas-wrap:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ── Active edit state ── */
+
 .tl-edit-mode .tl-rooms-item:not(.tl-rooms-item--active) {
     opacity: 0.4;
     cursor: not-allowed;
@@ -2095,7 +2146,6 @@
 
 /* ── Grid line visibility toggle ── */
 
-/* Hide grid lines even in edit mode when showGridLines: false */
 .tl-no-grid-lines .tl-canvas {
     background-image: none !important;
 }

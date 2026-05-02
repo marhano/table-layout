@@ -87,6 +87,7 @@ var TableLayout = (function () {
     }
 
     $container.append($wrapper);
+    $container.addClass("tl-mode-" + (cfg.mode || "edit"));
     if (cfg.realTime === false) $container.addClass("tl-view-mode");
     if (cfg.showGridLines === false) $container.addClass("tl-no-grid-lines");
 
