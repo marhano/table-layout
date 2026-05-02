@@ -1370,7 +1370,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.45);
-    z-index: 1000;
+    z-index: 1001;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2049,14 +2049,21 @@
    VIEW / EDIT MODE
    ───────────────────────────────────────────────────────────── */
 
-/* View mode: read-only grid */
-.tl-view-mode .tl-shape-panel {
-    opacity: 0.35;
-    pointer-events: none;
+/* ── View state (not actively editing) ── */
+
+/* Hide grid lines when not editing */
+.tl-view-mode .tl-canvas {
+    background-image: none;
 }
 
+/* Shape panel hidden (not just faded) — only meaningful during edit */
+.tl-view-mode .tl-shape-panel {
+    display: none;
+}
+
+/* Table cards are clickable in view mode (onTableClick) */
 .tl-view-mode .tl-table-card {
-    cursor: default;
+    cursor: pointer;
 }
 
 .tl-view-mode .tl-table-card:hover {
@@ -2064,10 +2071,17 @@
     filter: none;
 }
 
+/* Cells are transparent — no visible grid structure in view mode */
+.tl-view-mode .tl-cell {
+    background: transparent !important;
+}
+
 .tl-view-mode .tl-cell--empty:hover {
     border-color: transparent;
-    background: var(--tl-cell-bg) !important;
+    background: transparent !important;
 }
+
+/* ── Edit state ── */
 
 /* Edit mode: room panel locks */
 .tl-edit-mode .tl-rooms-item:not(.tl-rooms-item--active) {
@@ -2077,6 +2091,13 @@
 
 .tl-edit-mode .tl-rooms-add-submit {
     visibility: visible;
+}
+
+/* ── Grid line visibility toggle ── */
+
+/* Hide grid lines even in edit mode when showGridLines: false */
+.tl-no-grid-lines .tl-canvas {
+    background-image: none !important;
 }
 
 /* ─────────────────────────────────────────────────────────────

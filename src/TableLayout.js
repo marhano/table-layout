@@ -88,6 +88,7 @@ var TableLayout = (function () {
 
     $container.append($wrapper);
     if (cfg.realTime === false) $container.addClass("tl-view-mode");
+    if (cfg.showGridLines === false) $container.addClass("tl-no-grid-lines");
 
     // ── Apply initial zoom ─────────────────────────
     GridZoom.applyZoom(cfg.zoom.initial || 1, true);
@@ -326,6 +327,11 @@ var TableLayout = (function () {
         // Toggle view-mode class
         if (newConfig.realTime !== undefined) {
           jQuery("#" + cid).toggleClass("tl-view-mode", newConfig.realTime === false);
+        }
+
+        // Toggle grid lines
+        if (newConfig.showGridLines !== undefined) {
+          jQuery("#" + cid).toggleClass("tl-no-grid-lines", newConfig.showGridLines === false);
         }
       },
 

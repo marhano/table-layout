@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-05-01T15:05:52.652Z
+ * Built: 2026-05-01T15:45:43.564Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -58,6 +58,7 @@ var GridConfig = (function () {
     swapAnimation: true,
     showSizeBadge: true,
     showHint: false,
+    showGridLines: true, // false hides grid lines even in edit mode
     mode: 'edit', // 'edit' or 'view' — determines whether the 'Edit Layout' option appears in the settings popup
 
     theme: {
@@ -897,6 +898,7 @@ var GridRender = (function () {
   // ── Table card ────────────────────────────────────
 
   function buildTableCard(t) {
+    var cid = _TL.cid();
     var cfg = GridCore.getConfig();
     var statusColor = cfg.statusColors[t.status] || "#6b7280";
     var shape = t.shape || "square";
@@ -937,13 +939,16 @@ var GridRender = (function () {
       );
     }
 
-    // ── Click event (view mode only — not when editing) ──
+    // ── Click event — only fires on mode:'view' instances when not editing ──
     (function (tableId) {
       $card.on('click', function (e) {
-        if (GridCore.isEditing() || cfg.realTime !== false) return;
-        if (typeof cfg.onTableClick === 'function') {
+        _TL.use(cid);
+        if (GridCore.isEditing()) return;
+        var liveCfg = GridCore.getConfig();
+        if (liveCfg.mode !== 'view') return;
+        if (typeof liveCfg.onTableClick === 'function') {
           var tbl = GridCore.tableById(tableId);
-          if (tbl) cfg.onTableClick(tbl);
+          if (tbl) liveCfg.onTableClick(tbl);
         }
       });
     })(t.id);
@@ -958,7 +963,8 @@ var GridRender = (function () {
         .on("click", function (e) {
           e.stopPropagation();
           e.preventDefault();
-          if (cfg.realTime === false && !GridCore.isEditing()) return;
+          _TL.use(cid);
+          if (!GridCore.isEditing()) return;
           var tbl = GridCore.tableById(tableId);
           if (tbl) GridEdit.showEditModal(tbl);
         });
@@ -1797,9 +1803,9 @@ var GridToolbar = (function () {
       );
     }
 
-    // Settings gear — visible only when NOT in edit mode and has options
+    // Settings gear — only for mode:'edit' instances, when not currently editing
     var hasSettingsOptions = cfg.realTime === false && cfg.mode !== "view" && !GridCore.isEditing();
-    if ((cfg.realTime !== false || !GridCore.isEditing()) && hasSettingsOptions) {
+    if (hasSettingsOptions) {
       var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
       var $settingsBtn = jQuery("<button>")
         .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
@@ -3531,6 +3537,7 @@ var GridEdit = (function () {
   }
 
   function _showEditModal(table) {
+    var cid = _TL.cid();
     var cfg = GridCore.getConfig();
     var currentShape = table.shape || "square";
     var statusColor = cfg.statusColors[table.status] || "#6b7280";
@@ -3645,6 +3652,7 @@ var GridEdit = (function () {
       .addClass('tl-btn tl-btn-primary')
       .text('Save')
       .on('click', function () {
+        _TL.use(cid);
         $err.hide();
         var selectedVal = $select.val();
         var props = { shape: currentShape };
@@ -3693,7 +3701,7 @@ var GridEdit = (function () {
       jQuery('<div>').addClass('tl-modal-actions').append($cancel, $save)
     );
     $overlay.append($modal);
-    jQuery('#' + _TL.cid()).append($overlay);
+    jQuery('#' + cid).append($overlay);
 
     $overlay.on('click', function (e) {
       if (jQuery(e.target).is($overlay)) $overlay.remove();
@@ -4998,6 +5006,7 @@ var TableLayout = (function () {
 
     $container.append($wrapper);
     if (cfg.realTime === false) $container.addClass("tl-view-mode");
+    if (cfg.showGridLines === false) $container.addClass("tl-no-grid-lines");
 
     // ── Apply initial zoom ─────────────────────────
     GridZoom.applyZoom(cfg.zoom.initial || 1, true);
@@ -5236,6 +5245,11 @@ var TableLayout = (function () {
         // Toggle view-mode class
         if (newConfig.realTime !== undefined) {
           jQuery("#" + cid).toggleClass("tl-view-mode", newConfig.realTime === false);
+        }
+
+        // Toggle grid lines
+        if (newConfig.showGridLines !== undefined) {
+          jQuery("#" + cid).toggleClass("tl-no-grid-lines", newConfig.showGridLines === false);
         }
       },
 

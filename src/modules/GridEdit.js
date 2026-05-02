@@ -15,6 +15,7 @@ var GridEdit = (function () {
   }
 
   function _showEditModal(table) {
+    var cid = _TL.cid();
     var cfg = GridCore.getConfig();
     var currentShape = table.shape || "square";
     var statusColor = cfg.statusColors[table.status] || "#6b7280";
@@ -129,6 +130,7 @@ var GridEdit = (function () {
       .addClass('tl-btn tl-btn-primary')
       .text('Save')
       .on('click', function () {
+        _TL.use(cid);
         $err.hide();
         var selectedVal = $select.val();
         var props = { shape: currentShape };
@@ -177,7 +179,7 @@ var GridEdit = (function () {
       jQuery('<div>').addClass('tl-modal-actions').append($cancel, $save)
     );
     $overlay.append($modal);
-    jQuery('#' + _TL.cid()).append($overlay);
+    jQuery('#' + cid).append($overlay);
 
     $overlay.on('click', function (e) {
       if (jQuery(e.target).is($overlay)) $overlay.remove();

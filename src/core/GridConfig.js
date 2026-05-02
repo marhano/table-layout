@@ -17,6 +17,7 @@ var GridConfig = (function () {
     swapAnimation: true,
     showSizeBadge: true,
     showHint: false,
+    showGridLines: true, // false hides grid lines even in edit mode
     mode: 'edit', // 'edit' or 'view' — determines whether the 'Edit Layout' option appears in the settings popup
 
     theme: {

@@ -381,9 +381,9 @@ var GridToolbar = (function () {
       );
     }
 
-    // Settings gear — visible only when NOT in edit mode and has options
+    // Settings gear — only for mode:'edit' instances, when not currently editing
     var hasSettingsOptions = cfg.realTime === false && cfg.mode !== "view" && !GridCore.isEditing();
-    if ((cfg.realTime !== false || !GridCore.isEditing()) && hasSettingsOptions) {
+    if (hasSettingsOptions) {
       var $settingsWrap = jQuery("<div>").css("position", "relative").css("display", "inline-flex");
       var $settingsBtn = jQuery("<button>")
         .addClass("tl-toolbar-btn tl-toolbar-btn--settings")
