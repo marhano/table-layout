@@ -398,6 +398,19 @@ var GridToolbar = (function () {
       ctx.$editSection.append($settingsWrap);
     }
 
+    // Refresh button — always visible
+    var $refreshBtn = jQuery("<button>")
+      .addClass("tl-toolbar-btn tl-toolbar-btn--refresh")
+      .attr("title", "Refresh layout")
+      .html('<i class="fa-solid fa-rotate-right"></i>')
+      .on("click", function (e) {
+        e.stopPropagation();
+        _TL.use(cid);
+        _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
+        if (typeof cfg.onRefresh === "function") cfg.onRefresh(GridCore.getLayout());
+      });
+    ctx.$editSection.append($refreshBtn);
+
     // Help button — always visible
     var $helpBtn = jQuery("<button>")
       .addClass("tl-toolbar-btn tl-toolbar-btn--help")

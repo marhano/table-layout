@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-05-21T05:45:32.565Z
+ * Built: 2026-05-21T06:06:01.400Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -1876,6 +1876,19 @@ var GridToolbar = (function () {
       $settingsWrap.append($settingsBtn);
       ctx.$editSection.append($settingsWrap);
     }
+
+    // Refresh button — always visible
+    var $refreshBtn = jQuery("<button>")
+      .addClass("tl-toolbar-btn tl-toolbar-btn--refresh")
+      .attr("title", "Refresh layout")
+      .html('<i class="fa-solid fa-rotate-right"></i>')
+      .on("click", function (e) {
+        e.stopPropagation();
+        _TL.use(cid);
+        _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
+        if (typeof cfg.onRefresh === "function") cfg.onRefresh(GridCore.getLayout());
+      });
+    ctx.$editSection.append($refreshBtn);
 
     // Help button — always visible
     var $helpBtn = jQuery("<button>")

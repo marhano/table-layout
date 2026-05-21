@@ -401,6 +401,28 @@
     transform: none;
 }
 
+.tl-toolbar-btn--refresh {
+    background: transparent;
+    color: var(--tl-surface-muted);
+    padding: 0;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+}
+
+.tl-toolbar-btn--refresh:hover {
+    background: var(--tl-surface-bright);
+    color: var(--tl-primary);
+    transform: none;
+}
+
+.tl-toolbar-btn--refresh:active i {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
 /* ── Settings Popup ── */
 .tl-settings-popup {
     position: absolute;
