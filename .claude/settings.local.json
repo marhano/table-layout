@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.anthropic.com)",
+      "PowerShell($binPath = \"C:\\\\Users\\\\marjan.carullo\\\\.claude\\\\projects\\\\d--PRJCT-Javascript-table-layout\\\\c33737ce-57c6-4ee0-ad9f-a6bd84e7551f\\\\tool-results\\\\webfetch-1779334075447-9hlviu.bin\"; $outPath = \"C:\\\\Users\\\\marjan.carullo\\\\AppData\\\\Local\\\\Temp\\\\design-extracted\"; New-Item -ItemType Directory -Force $outPath | Out-Null; Copy-Item $binPath \"$outPath\\\\file.gz\"; cd $outPath; tar -xzf file.gz; Get-ChildItem -Recurse | Select-Object FullName)",
+      "Bash(node build.js)"
+    ]
+  }
+}

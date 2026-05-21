@@ -379,7 +379,9 @@ var GridRooms = (function () {
       $icon.text(room.icon || "?");
     }
 
-    $item.append($icon);
+    var $label = jQuery("<span>").addClass("tl-rooms-label").text(room.label);
+
+    $item.append($icon, $label);
 
     return $item;
   }

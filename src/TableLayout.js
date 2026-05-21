@@ -67,14 +67,14 @@ var TableLayout = (function () {
     if (cfg.layers && cfg.layers.length) {
       var $rooms = GridRooms.build();
       if ($rooms) $canvasWrap.append($rooms);
-      if (cfg.roomStyle === "simple") {
-        $canvasWrap.append(GridRooms.buildTabBar());
-      }
     }
 
     $wrapper.append(GridToolbar.build());
     $wrapper.append($canvasWrap);
-    $wrapper.append(GridRender.buildLegend());
+    if (cfg.layers && cfg.layers.length && cfg.roomStyle === "simple") {
+      $wrapper.append(GridRooms.buildTabBar());
+    }
+    if (cfg.legend !== false) $wrapper.append(GridRender.buildLegend());
 
     if (cfg.showHint) {
       $wrapper.append(
@@ -325,6 +325,15 @@ var TableLayout = (function () {
           _TL.$(".tl-legend").replaceWith(GridRender.buildLegend());
         }
 
+        if (newConfig.legend !== undefined) {
+          var $existing = _TL.$(".tl-legend");
+          if (newConfig.legend === false) {
+            $existing.remove();
+          } else if (!$existing.length) {
+            _TL.$(".tl-wrapper").append(GridRender.buildLegend());
+          }
+        }
+
         // Toggle view-mode class
         if (newConfig.realTime !== undefined) {
           jQuery("#" + cid).toggleClass("tl-view-mode", newConfig.realTime === false);
@@ -431,7 +440,9 @@ var TableLayout = (function () {
     }
 
     $container.empty().append(
-      jQuery("<div>").addClass("tl-root").append($toolbar, $canvas, $tabbar)
+      jQuery("<div>").addClass("tl-root").append(
+        jQuery("<div>").addClass("tl-wrapper").append($toolbar, $canvas, $tabbar)
+      )
     );
   }
 

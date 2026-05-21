@@ -1,7 +1,7 @@
 ﻿/* Spinner for select loading */
 .tl-spinner {
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #6366f1;
+  border: 2px solid #ECE8E1;
+  border-top: 2px solid #B5482E;
   border-radius: 50%;
   width: 18px;
   height: 18px;
@@ -15,19 +15,7 @@
   font-size: 14px;
 }
 .tl-table-option.selected {
-  background: #e0e7ff;
-}/* Spinner for select loading */
-.tl-spinner {
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #6366f1;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  animation: tl-spin 0.8s linear infinite;
-}
-@keyframes tl-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  background: #FBEDE7;
 }/* ============================================================
    table-layout.css
    Restaurant Table Layout Grid Library
@@ -43,33 +31,36 @@
 
 /* ── Root ── */
 .tl-root {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     line-height: 1.5;
     /* ── Theme tokens (overridden by JS from cfg.theme) ── */
-    --tl-primary:        #6366f1;
-    --tl-primary-dark:   #4f46e5;
-    --tl-primary-light:  #818cf8;
-    --tl-surface:        #f8fafc;
-    --tl-surface-alt:    #334155;
-    --tl-surface-hover:  #475569;
-    --tl-surface-muted:  #64748b;
-    --tl-surface-subtle: #94a3b8;
-    --tl-surface-bright: #f1f5f9;
-    --tl-danger:         #dc2626;
-    --tl-border:         #e5e7eb;
-    --tl-zoom-bg:        rgba(255, 255, 255, 0.92);
-    --tl-zoom-btn-bg:    #f1f5f9;
-    --tl-zoom-btn-color: #334155;
-    --tl-zoom-btn-hover: #e2e8f0;
+    --tl-primary:        #B5482E;
+    --tl-primary-dark:   #8E3621;
+    --tl-primary-light:  #D4705A;
+    --tl-surface:        #F7F5F2;
+    --tl-surface-alt:    #1B1A17;
+    --tl-surface-hover:  #4A4742;
+    --tl-surface-muted:  #8A857C;
+    --tl-surface-subtle: #B8B2A7;
+    --tl-surface-bright: #FBFAF7;
+    --tl-danger:         #B23A3A;
+    --tl-border:         #ECE8E1;
+    --tl-zoom-bg:        rgba(251, 250, 247, 0.95);
+    --tl-zoom-btn-bg:    #FBFAF7;
+    --tl-zoom-btn-color: #1B1A17;
+    --tl-zoom-btn-hover: #ECE8E1;
     --tl-canvas-height:  600px;
     --tl-grid-bg:        #ffffff;
-    --tl-cell-bg:        #fbfbfb;
+    --tl-cell-bg:        #FBFAF7;
 }
 
 /* ── Wrapper ── */
 .tl-wrapper {
     width: 100%;
     margin: 0 auto;
+    border: 1px solid var(--tl-border);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -77,26 +68,25 @@
    ───────────────────────────────────────────────────────────── */
 .tl-toolbar {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 12px 0 0;
     background: var(--tl-surface);
-    border-radius: 12px 12px 0 0;
-    min-height: 56px;
-    border-top: 1px solid var(--tl-border);
-    border-right: 1px solid var(--tl-border);
-    border-left: 1px solid var(--tl-border);
+    border-radius: 0;
+    height: 52px;
+    border: none;
+    border-bottom: 1px solid var(--tl-border);
     transition: border-color 0.2s;
 }
 
 .tl-edit-mode .tl-toolbar {
-    border-top: 2px solid var(--tl-primary);
+    box-shadow: inset 0 2px 0 var(--tl-primary);
 }
 
 .tl-toolbar-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -107,32 +97,32 @@
 .tl-toolbar-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     flex-shrink: 0;
 }
 
 /* ── Icon Badge ── */
 .tl-toolbar-icon-badge {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--tl-surface-bright), var(--tl-surface-bright));
-    color: #b7b7b7;
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    background: var(--tl-surface-bright);
+    color: var(--tl-surface-muted);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.85rem;
+    font-size: 0.72rem;
     font-weight: 700;
     flex-shrink: 0;
     cursor: default;
-    transition: transform 0.12s, box-shadow 0.12s;
+    transition: background 0.12s;
     position: relative;
 }
 
-.tl-tab--active .tl-toolbar-icon-badge{
-    background: linear-gradient(135deg, var(--tl-primary), var(--tl-primary-dark));
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--tl-primary) 30%, transparent);
+.tl-tab--active .tl-toolbar-icon-badge {
+    background: var(--tl-primary);
     color: #fff;
+    box-shadow: none;
 }
 
 .tl-toolbar-icon-badge--editable {
@@ -140,39 +130,38 @@
 }
 
 .tl-toolbar-icon-badge--editable:hover {
-    transform: scale(1.06);
-    box-shadow: 0 3px 12px color-mix(in srgb, var(--tl-primary) 40%, transparent);
+    background: color-mix(in srgb, var(--tl-primary) 15%, var(--tl-surface-bright));
 }
 
 .tl-toolbar-icon-badge--picker-open,
 .tl-toolbar-icon-badge--picker-open:hover {
-    transform: none;
+    background: var(--tl-primary);
+    color: #fff;
 }
 
 .tl-toolbar-icon-badge i {
-    font-size: 0.9rem;
+    font-size: 0.72rem;
 }
 
 .tl-toolbar-icon-img {
-    width: 22px;
-    height: 22px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
-    border-radius: 3px;
+    border-radius: 2px;
 }
 
 /* ── Layer Name ── */
 .tl-toolbar-layout-name {
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: 0.8rem;
+    font-weight: 500;
     color: var(--tl-surface-alt);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 240px;
-    letter-spacing: -0.01em;
+    max-width: 200px;
     cursor: default;
-    padding: 2px 6px;
-    border-radius: 6px;
+    padding: 2px 4px;
+    border-radius: 4px;
     transition: background 0.12s;
 }
 
@@ -186,16 +175,16 @@
 
 /* ── Editable Name Input (inline) ── */
 .tl-toolbar-layout-name-input {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 500;
     color: var(--tl-surface-alt);
     border: 1.5px solid var(--tl-primary);
-    border-radius: 8px;
-    padding: 4px 10px;
+    border-radius: 6px;
+    padding: 3px 8px;
     outline: none;
-    max-width: 220px;
+    max-width: 180px;
     font-family: inherit;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tl-primary) 15%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tl-primary) 12%, transparent);
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -208,8 +197,8 @@
     left: 0;
     z-index: 100;
     background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
     padding: 14px;
     min-width: 260px;
     opacity: 0;
@@ -343,47 +332,50 @@
 .tl-toolbar-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 0.82rem;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
-    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    transition: background 0.12s, color 0.12s;
     white-space: nowrap;
 }
 
 .tl-toolbar-btn i {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
 }
 
 .tl-toolbar-btn:hover {
-    transform: translateY(-1px);
+    transform: none;
 }
 
 .tl-toolbar-btn:active {
-    transform: translateY(0);
+    transform: none;
 }
 
 .tl-toolbar-btn--edit {
     background: var(--tl-primary);
     color: #fff;
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--tl-primary) 35%, transparent);
+    box-shadow: none;
 }
 
 .tl-toolbar-btn--edit:hover {
     background: var(--tl-primary-dark);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--tl-primary) 45%, transparent);
+    box-shadow: none;
 }
 
 .tl-toolbar-btn--settings {
     background: transparent;
     color: var(--tl-surface-muted);
-    padding: 8px;
-    font-size: 0.92rem;
-    border-radius: 8px;
+    padding: 0;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
 }
 
 .tl-toolbar-btn--settings:hover {
@@ -395,9 +387,12 @@
 .tl-toolbar-btn--help {
     background: transparent;
     color: var(--tl-surface-muted);
-    padding: 8px;
-    font-size: 0.92rem;
-    border-radius: 8px;
+    padding: 0;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
 }
 
 .tl-toolbar-btn--help:hover {
@@ -413,8 +408,8 @@
     right: 0;
     z-index: 100;
     background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
     padding: 4px;
     min-width: 180px;
     opacity: 0;
@@ -472,33 +467,33 @@
 .tl-toolbar-btn--save {
     background: #16a34a;
     color: #fff;
-    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35);
+    box-shadow: none;
 }
 
 .tl-toolbar-btn--save:hover {
     background: #15803d;
-    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.45);
+    box-shadow: none;
 }
 
 .tl-toolbar-btn--discard {
-    background: var(--tl-surface-bright);
+    background: transparent;
     color: var(--tl-surface-muted);
+    border: 1px solid var(--tl-border);
 }
 
 .tl-toolbar-btn--discard:hover {
-    background: #e2e8f0;
+    background: #ECE8E1;
     color: var(--tl-surface-alt);
 }
 
-/* ── Browser-Style Layer Tabs ── */
+/* ── Layer Tabs ── */
 .tl-tab-bar {
     display: flex;
-    align-items: flex-end;
-    gap: 2px;
+    align-items: stretch;
+    gap: 0;
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    padding-bottom: 0;
     scrollbar-width: none;
 }
 
@@ -509,41 +504,40 @@
 .tl-tab {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 6px 14px;
+    gap: 8px;
+    padding: 0 16px;
     border: none;
-    border-radius: 10px 10px 0 0;
+    border-radius: 0;
     background: transparent;
     color: var(--tl-surface-muted);
-    font-size: 0.78rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 500;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
-    min-width: 60px;
-    max-width: 160px;
+    min-width: 0;
     position: relative;
-    transition: background 0.15s, color 0.15s;
+    transition: color 0.15s;
     user-select: none;
 }
 
 .tl-tab:hover {
-    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
+    background: transparent;
     color: var(--tl-surface-alt);
 }
 
 .tl-tab--active {
-    background: #fff;
-    color: var(--tl-surface-alt);
-    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
+    background: transparent;
+    color: var(--tl-primary);
+    box-shadow: none;
 }
 
 .tl-tab--active::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: 6px;
-    right: 6px;
+    left: 0;
+    right: 0;
     height: 2px;
     background: var(--tl-primary);
     border-radius: 2px 2px 0 0;
@@ -559,13 +553,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
     border: none;
     background: transparent;
     color: var(--tl-surface-subtle);
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     cursor: pointer;
     flex-shrink: 0;
     opacity: 0;
@@ -589,16 +583,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
     border: 1.5px dashed var(--tl-surface-subtle);
     background: transparent;
     color: var(--tl-surface-subtle);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     cursor: pointer;
     flex-shrink: 0;
-    margin-left: 4px;
+    margin-left: 8px;
     transition: border-color 0.15s, color 0.15s, background 0.15s;
     visibility: hidden;
 }
@@ -614,12 +608,12 @@
 }
 
 .tl-tab--drag-over {
-    background: color-mix(in srgb, var(--tl-primary) 12%, transparent);
+    color: var(--tl-primary);
 }
 
 .tl-tab-rename-input {
     font-size: 0.78rem;
-    font-weight: 600;
+    font-weight: 500;
     font-family: inherit;
     color: var(--tl-surface-alt);
     border: 1.5px solid var(--tl-primary);
@@ -627,36 +621,26 @@
     padding: 2px 6px;
     width: 80px;
     outline: none;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tl-primary) 15%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tl-primary) 12%, transparent);
 }
 
 /* ── Floating Room Switcher (simple mode — bottom-left of grid) ── */
 .tl-room-tab-bar {
-    position: absolute;
-    bottom: 18px;
-    left: 18px;
-    z-index: 10;
     display: flex;
-    align-items: center;
-    gap: 0;
-    max-width: calc(100% - 320px);
-    padding: 0;
-    border-radius: 10px;
-    background: var(--tl-zoom-bg);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    align-items: stretch;
+    height: 52px;
+    background: var(--tl-surface);
+    border-top: 1px solid var(--tl-border);
 }
 
 .tl-room-tab-scroll-area {
     display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 4px;
+    align-items: stretch;
+    flex: 1;
+    min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
     scroll-behavior: smooth;
-    min-width: 0;
 }
 
 .tl-room-tab-scroll-area::-webkit-scrollbar {
@@ -668,11 +652,11 @@
     display: none;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 26px;
+    width: 28px;
+    height: 100%;
     border: none;
     background: transparent;
-    color: var(--tl-zoom-btn-color);
+    color: var(--tl-surface-muted);
     font-size: 0.6rem;
     cursor: pointer;
     flex-shrink: 0;
@@ -686,49 +670,58 @@
 
 .tl-room-tab-scroll:hover {
     color: var(--tl-primary);
-    background: color-mix(in srgb, var(--tl-primary) 8%, transparent);
+    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
 }
 
 .tl-room-tab-scroll--left {
-    border-radius: 10px 0 0 10px;
-    padding-left: 4px;
+    border-right: 1px solid var(--tl-border);
 }
 
 .tl-room-tab-scroll--right {
-    border-radius: 0 10px 10px 0;
-    padding-right: 2px;
+    border-left: 1px solid var(--tl-border);
 }
 
 .tl-room-tab {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 10px;
+    padding: 0 16px;
+    height: 100%;
     border: none;
-    border-radius: 6px;
+    border-radius: 0;
     background: transparent;
     color: var(--tl-surface-muted);
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 500;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
     position: relative;
-    transition: background 0.15s, color 0.15s;
+    transition: color 0.15s;
     user-select: none;
 }
 
 .tl-room-tab:hover {
-    background: color-mix(in srgb, var(--tl-primary) 8%, transparent);
+    color: var(--tl-primary);
+    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
 }
 
 .tl-room-tab--active {
+    background: transparent;
+    color: var(--tl-primary);
+}
+
+.tl-room-tab--active::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
     background: var(--tl-primary);
-    color: #fff;
+    border-radius: 0 0 2px 2px;
 }
 
 .tl-room-tab--active:hover {
-    background: var(--tl-primary-dark);
+    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
 }
 
 .tl-room-tab-icon {
@@ -769,7 +762,7 @@
 }
 
 .tl-room-tab--active .tl-room-tab-close {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--tl-primary);
 }
 
 .tl-room-tab:hover .tl-room-tab-close,
@@ -783,31 +776,29 @@
 }
 
 .tl-room-tab--active .tl-room-tab-close:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
+    background: color-mix(in srgb, var(--tl-danger) 12%, transparent);
+    color: var(--tl-danger);
 }
 
 .tl-room-tab-add {
     display: none;
     align-items: center;
     justify-content: center;
-    width: 32px;
+    width: 40px;
     height: 100%;
-    min-height: 34px;
-    border-radius: 0 10px 10px 0;
     border: none;
-    border-left: 1px solid rgba(0, 0, 0, 0.08);
-    background: var(--tl-zoom-btn-bg);
-    color: var(--tl-zoom-btn-color);
+    border-left: 1px solid var(--tl-border);
+    background: transparent;
+    color: var(--tl-surface-muted);
     font-size: 0.75rem;
     cursor: pointer;
     flex-shrink: 0;
-    transition: background 0.15s, color 0.15s, transform 0.1s;
+    transition: background 0.15s, color 0.15s;
 }
 
 .tl-edit-mode .tl-room-tab-add:hover {
-    background: var(--tl-zoom-btn-hover);
-    transform: scale(1.1);
+    color: var(--tl-primary);
+    background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
 }
 
 .tl-room-tab--dragging {
@@ -845,9 +836,11 @@
 .tl-toolbar-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-shrink: 0;
+    padding: 0 0 0 8px;
     position: relative;
+    border-left: 1px solid var(--tl-border);
 }
 
 /* ── Edit-mode locks for tabs ── */
@@ -937,9 +930,8 @@
    ───────────────────────────────────────────────────────────── */
 .tl-canvas {
     overflow: auto;
-    border-top: none;
-    border-radius: 0 0 12px 12px;
-    border: 1px solid var(--tl-border);
+    border: none;
+    border-radius: 0;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
         linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
@@ -967,7 +959,7 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    border-radius: 10px;
+    border-radius: 8px;
     background: var(--tl-zoom-bg);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
@@ -1066,6 +1058,8 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    border: none;
+    border-radius: 0;
 }
 
 .tl-fullscreen .tl-canvas-wrap {
@@ -1088,7 +1082,7 @@
     transform-origin: top left;
     transition: transform 0.18s ease;
     display: inline-block;
-    padding: 20px;
+    padding: 4px;
 }
 
 /* ───────────────────────────────��─────────────────────────────
@@ -1378,10 +1372,10 @@
 
 .tl-modal {
     background: #fff;
-    border-radius: 14px;
+    border-radius: 10px;
     padding: 28px 32px;
     width: 340px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -1722,11 +1716,11 @@
     align-items: center;
     gap: 4px;
     padding: 8px 6px;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(251, 250, 247, 0.95);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    border-radius: 14px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.05);
     transform: translateY(-50%);
 }
 
@@ -1769,7 +1763,7 @@
 }
 
 .tl-rooms-panel {
-    width: 36px;
+    width: 60px;
     background: var(--tl-surface);
     border-radius: 0 0 18px 18px;
     overflow: hidden;
@@ -1805,12 +1799,16 @@
 
 .tl-rooms-item {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 3px;
     cursor: pointer;
     border-radius: 8px;
     transition: opacity 0.12s, transform 0.15s;
     position: relative;
+    width: 52px;
+    padding: 4px 2px;
 }
 
 .tl-rooms-item:hover .tl-rooms-icon {
@@ -1842,6 +1840,23 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--tl-surface-subtle) 40%, transparent);
 }
 
+.tl-rooms-label {
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: var(--tl-surface-muted);
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+}
+
+.tl-rooms-item--active .tl-rooms-label {
+    color: var(--tl-surface-subtle);
+}
+
 /* Drag reorder states */
 .tl-rooms-item--dragging {
     opacity: 0.4;
@@ -1857,6 +1872,11 @@
     background: var(--tl-surface-alt);
     margin: 2px 0;
     flex-shrink: 0;
+    display: none;
+}
+
+.tl-edit-mode .tl-rooms-separator {
+    display: block;
 }
 
 .tl-rooms-add-submit {
@@ -1869,12 +1889,15 @@
     color: var(--tl-surface-muted);
     font-size: 0.75rem;
     cursor: pointer;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     transition: border-color 0.15s, color 0.15s;
     flex-shrink: 0;
-    visibility: hidden;
+}
+
+.tl-edit-mode .tl-rooms-add-submit {
+    display: flex;
 }
 
 .tl-edit-mode .tl-rooms-add-submit:hover {
@@ -1891,9 +1914,9 @@
     position: absolute;
     right: calc(100% + 14px);
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.97);
-    border-radius: 12px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    background: rgba(251, 250, 247, 0.97);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     pointer-events: none;
@@ -1920,8 +1943,8 @@
 .tl-room-preview-grid {
     display: grid;
     position: relative;
-    background: #f0f2f5;
-    border: 1px solid #dde1e8;
+    background: #F7F5F2;
+    border: 1px solid #ECE8E1;
     border-radius: 3px;
     transform: rotateX(55deg) rotateZ(-45deg);
     transform-style: preserve-3d;
@@ -1929,8 +1952,8 @@
 }
 
 .tl-room-preview-cell {
-    background: #f5f7fa;
-    border: 0.5px solid #e0e4ea;
+    background: #FBFAF7;
+    border: 0.5px solid #ECE8E1;
 }
 
 .tl-room-preview-table {
@@ -1980,15 +2003,15 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(251, 250, 247, 0.95);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.05);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
-    color: #9ca3af;
+    color: #B8B2A7;
     z-index: 10;
     opacity: 0;
     transform: scale(0.7);
@@ -2040,7 +2063,7 @@
    ───────────────────────────────────────────────────────────── */
 .tl-hint {
     text-align: center;
-    color: #9ca3af;
+    color: #B8B2A7;
     font-size: 0.75rem;
     margin-top: 10px;
 }
@@ -2101,7 +2124,6 @@
     opacity: 0;
     transition: opacity 0.15s ease;
     z-index: 18;
-    border-radius: 12px;
 }
 
 .tl-mode-edit.tl-view-mode .tl-canvas-wrap:hover::before {
@@ -2116,7 +2138,7 @@
     left: 50%;
     transform: translateX(-50%) translateY(6px);
     background: rgba(15, 23, 42, 0.92);
-    color: #f8fafc;
+    color: #F7F5F2;
     padding: 7px 16px;
     border-radius: 8px;
     font-size: 12px;
@@ -2161,9 +2183,9 @@
 .tl-skeleton-bone {
   background: linear-gradient(
     90deg,
-    #e2e8f0 25%,
-    #f1f5f9 50%,
-    #e2e8f0 75%
+    #ECE8E1 25%,
+    #FBFAF7 50%,
+    #ECE8E1 75%
   );
   background-size: 200% 100%;
   animation: tl-shimmer 1.4s ease-in-out infinite;
@@ -2175,16 +2197,15 @@
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  min-height: 56px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px 12px 0 0;
-  border-bottom: none;
+  height: 52px;
+  background: #F7F5F2;
+  border: none;
+  border-bottom: 1px solid #ECE8E1;
 }
 
 .tl-skeleton-tab {
   height: 28px;
-  border-radius: 8px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 
@@ -2192,8 +2213,7 @@
   position: relative;
   overflow: hidden;
   background: #ffffff;
-  border-left: 1px solid #e5e7eb;
-  border-right: 1px solid #e5e7eb;
+  border: none;
 }
 
 .tl-skeleton-table {
@@ -2206,14 +2226,13 @@
   align-items: center;
   gap: 4px;
   padding: 8px 12px 6px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-top: none;
-  border-radius: 0 0 12px 12px;
+  background: #F7F5F2;
+  border: none;
+  border-top: 1px solid #ECE8E1;
 }
 
 .tl-skeleton-room-tab {
   height: 32px;
-  border-radius: 8px 8px 0 0;
+  border-radius: 6px 6px 0 0;
   flex-shrink: 0;
 }
