@@ -212,6 +212,60 @@ var GridRender = (function () {
       });
   }
 
+  // ── Infinite grid expansion ───────────────────────
+
+  function expandGridDOM(newCols, newRows) {
+    var cfg = GridCore.getConfig();
+    var oldCols = cfg.columns;
+    var oldRows = cfg.rows;
+    if (newCols <= oldCols && newRows <= oldRows) return;
+
+    newCols = Math.max(oldCols, newCols);
+    newRows = Math.max(oldRows, newRows);
+    cfg.columns = newCols;
+    cfg.rows    = newRows;
+
+    var gridW = newCols * cfg.cellSize + (newCols - 1) * cfg.gap;
+    var gridH = newRows * cfg.cellSize + (newRows - 1) * cfg.gap;
+
+    var $grid = _TL.$(".tl-layout-grid");
+    $grid.css({
+      "grid-template-columns": "repeat(" + newCols + ", " + cfg.cellSize + "px)",
+      "grid-template-rows":    "repeat(" + newRows + ", " + cfg.cellSize + "px)",
+      width:  gridW + "px",
+      height: gridH + "px",
+    });
+
+    // Append cells for new columns in existing rows
+    for (var r = 1; r <= oldRows; r++) {
+      for (var c = oldCols + 1; c <= newCols; c++) {
+        $grid.append(buildBgCell(c, r));
+      }
+    }
+    // Append cells for entirely new rows
+    for (var r2 = oldRows + 1; r2 <= newRows; r2++) {
+      for (var c2 = 1; c2 <= newCols; c2++) {
+        $grid.append(buildBgCell(c2, r2));
+      }
+    }
+
+    // Sync zoom-area layout size without triggering another expansion
+    GridZoom.syncZoomArea();
+  }
+
+  function maybeExpand(endCol, endRow) {
+    var cfg = GridCore.getConfig();
+    if (!cfg.infiniteGrid) return;
+    var STEP = 4;
+    var newCols = cfg.columns;
+    var newRows = cfg.rows;
+    if (endCol >= cfg.columns) newCols = cfg.columns + STEP;
+    if (endRow >= cfg.rows)    newRows = cfg.rows + STEP;
+    if (newCols !== cfg.columns || newRows !== cfg.rows) {
+      expandGridDOM(newCols, newRows);
+    }
+  }
+
   // ── Trash zone ─────────────────────────────────────
 
   function buildTrashZone() {
@@ -232,6 +286,8 @@ var GridRender = (function () {
     buildPlaceGhost: buildPlaceGhost,
     buildDragGhost: buildDragGhost,
     buildTrashZone: buildTrashZone,
+    expandGridDOM: expandGridDOM,
+    maybeExpand: maybeExpand,
     ns: ns,
   };
 })();

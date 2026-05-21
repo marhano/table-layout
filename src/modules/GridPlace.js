@@ -50,6 +50,8 @@ var GridPlace = (function () {
       if (!GridToolbar.getActive() || !ctx.start) return;
       var end = GridCore.cursorToGrid(e.originalEvent.clientX, e.originalEvent.clientY);
       var span = GridCore.calcSpan(ctx.start, end, GridToolbar.getActive());
+      GridRender.maybeExpand(span.col + span.colSpan - 1, span.row + span.rowSpan - 1);
+      _autoScrollCanvas(e.originalEvent.clientX, e.originalEvent.clientY);
       var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
       _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
     });
@@ -142,6 +144,17 @@ var GridPlace = (function () {
       ctx.$ghost.remove();
       ctx.$ghost = null;
     }
+  }
+
+  function _autoScrollCanvas(clientX, clientY) {
+    var canvasEl = _TL.$(".tl-canvas")[0];
+    if (!canvasEl) return;
+    var rect = canvasEl.getBoundingClientRect();
+    var MARGIN = 60, SPEED = 12;
+    if      (clientX > rect.right  - MARGIN) canvasEl.scrollLeft += SPEED;
+    else if (clientX < rect.left   + MARGIN) canvasEl.scrollLeft = Math.max(0, canvasEl.scrollLeft - SPEED);
+    if      (clientY > rect.bottom - MARGIN) canvasEl.scrollTop  += SPEED;
+    else if (clientY < rect.top    + MARGIN) canvasEl.scrollTop  = Math.max(0, canvasEl.scrollTop  - SPEED);
   }
 
   function _showModal(placement) {

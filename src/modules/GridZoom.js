@@ -53,9 +53,11 @@ var GridZoom = (function () {
     var $za = _TL.$(".tl-zoom-area");
     $za.css("transform", "scale(" + level + ")");
 
-    var natW = $za[0] ? $za[0].scrollWidth : 0;
-    var natH = $za[0] ? $za[0].scrollHeight : 0;
-    $za.css({ width: natW * level + "px", height: natH * level + "px" });
+    // Expand grid cells to fill canvas at this zoom level
+    _expandToFill(level);
+
+    // Sync zoom-area layout dimensions (called separately to avoid recursion)
+    syncZoomArea();
 
     _TL.$(".tl-zoom-label").text(_fmt(level));
     _TL.$(".tl-zoom-slider").val(level);
@@ -63,6 +65,36 @@ var GridZoom = (function () {
     GridEvents.emit("zoom:changed", level);
 
     if (!silent && typeof cfg.onZoom === "function") cfg.onZoom(level);
+  }
+
+  // Update zoom-area layout size without triggering another expansion
+  function syncZoomArea() {
+    var $za = _TL.$(".tl-zoom-area");
+    if (!$za[0]) return;
+    var level = _c() ? _c().zoom : 1;
+    var natW = $za[0].scrollWidth;
+    var natH = $za[0].scrollHeight;
+    $za.css({ width: natW * level + "px", height: natH * level + "px" });
+  }
+
+  // Expand grid so it always fills the visible canvas at the given zoom level
+  function _expandToFill(zoom) {
+    var cfg = GridCore.getConfig();
+    if (!cfg.infiniteGrid) return;
+    var canvasEl = _TL.$(".tl-canvas")[0];
+    if (!canvasEl) return;
+    var canvasW = canvasEl.clientWidth;
+    var canvasH = canvasEl.clientHeight;
+    if (!canvasW || !canvasH) return;
+    var unit = cfg.cellSize + cfg.gap;
+    var neededCols = Math.ceil(canvasW / (zoom * unit)) + 1;
+    var neededRows = Math.ceil(canvasH / (zoom * unit)) + 1;
+    if (neededCols > cfg.columns || neededRows > cfg.rows) {
+      GridRender.expandGridDOM(
+        Math.max(cfg.columns, neededCols),
+        Math.max(cfg.rows, neededRows)
+      );
+    }
   }
 
   function bindWheelZoom() {
@@ -127,6 +159,7 @@ var GridZoom = (function () {
     destroy: destroy,
     buildControls: buildControls,
     applyZoom: applyZoom,
+    syncZoomArea: syncZoomArea,
     bindWheelZoom: bindWheelZoom,
     getZoom: getZoom,
   };

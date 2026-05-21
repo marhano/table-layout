@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-05-21T05:23:40.051Z
+ * Built: 2026-05-21T05:45:32.565Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -59,6 +59,7 @@ var GridConfig = (function () {
     showSizeBadge: true,
     showHint: false,
     showGridLines: true, // false hides grid lines even in edit mode
+    infiniteGrid: true,  // grid auto-expands when dragging/placing/resizing near the edge
     mode: 'edit', // 'edit' or 'view' — determines whether the 'Edit Layout' option appears in the settings popup
 
     theme: {
@@ -1031,6 +1032,60 @@ var GridRender = (function () {
       });
   }
 
+  // ── Infinite grid expansion ───────────────────────
+
+  function expandGridDOM(newCols, newRows) {
+    var cfg = GridCore.getConfig();
+    var oldCols = cfg.columns;
+    var oldRows = cfg.rows;
+    if (newCols <= oldCols && newRows <= oldRows) return;
+
+    newCols = Math.max(oldCols, newCols);
+    newRows = Math.max(oldRows, newRows);
+    cfg.columns = newCols;
+    cfg.rows    = newRows;
+
+    var gridW = newCols * cfg.cellSize + (newCols - 1) * cfg.gap;
+    var gridH = newRows * cfg.cellSize + (newRows - 1) * cfg.gap;
+
+    var $grid = _TL.$(".tl-layout-grid");
+    $grid.css({
+      "grid-template-columns": "repeat(" + newCols + ", " + cfg.cellSize + "px)",
+      "grid-template-rows":    "repeat(" + newRows + ", " + cfg.cellSize + "px)",
+      width:  gridW + "px",
+      height: gridH + "px",
+    });
+
+    // Append cells for new columns in existing rows
+    for (var r = 1; r <= oldRows; r++) {
+      for (var c = oldCols + 1; c <= newCols; c++) {
+        $grid.append(buildBgCell(c, r));
+      }
+    }
+    // Append cells for entirely new rows
+    for (var r2 = oldRows + 1; r2 <= newRows; r2++) {
+      for (var c2 = 1; c2 <= newCols; c2++) {
+        $grid.append(buildBgCell(c2, r2));
+      }
+    }
+
+    // Sync zoom-area layout size without triggering another expansion
+    GridZoom.syncZoomArea();
+  }
+
+  function maybeExpand(endCol, endRow) {
+    var cfg = GridCore.getConfig();
+    if (!cfg.infiniteGrid) return;
+    var STEP = 4;
+    var newCols = cfg.columns;
+    var newRows = cfg.rows;
+    if (endCol >= cfg.columns) newCols = cfg.columns + STEP;
+    if (endRow >= cfg.rows)    newRows = cfg.rows + STEP;
+    if (newCols !== cfg.columns || newRows !== cfg.rows) {
+      expandGridDOM(newCols, newRows);
+    }
+  }
+
   // ── Trash zone ─────────────────────────────────────
 
   function buildTrashZone() {
@@ -1051,6 +1106,8 @@ var GridRender = (function () {
     buildPlaceGhost: buildPlaceGhost,
     buildDragGhost: buildDragGhost,
     buildTrashZone: buildTrashZone,
+    expandGridDOM: expandGridDOM,
+    maybeExpand: maybeExpand,
     ns: ns,
   };
 })();
@@ -2065,9 +2122,11 @@ var GridZoom = (function () {
     var $za = _TL.$(".tl-zoom-area");
     $za.css("transform", "scale(" + level + ")");
 
-    var natW = $za[0] ? $za[0].scrollWidth : 0;
-    var natH = $za[0] ? $za[0].scrollHeight : 0;
-    $za.css({ width: natW * level + "px", height: natH * level + "px" });
+    // Expand grid cells to fill canvas at this zoom level
+    _expandToFill(level);
+
+    // Sync zoom-area layout dimensions (called separately to avoid recursion)
+    syncZoomArea();
 
     _TL.$(".tl-zoom-label").text(_fmt(level));
     _TL.$(".tl-zoom-slider").val(level);
@@ -2075,6 +2134,36 @@ var GridZoom = (function () {
     GridEvents.emit("zoom:changed", level);
 
     if (!silent && typeof cfg.onZoom === "function") cfg.onZoom(level);
+  }
+
+  // Update zoom-area layout size without triggering another expansion
+  function syncZoomArea() {
+    var $za = _TL.$(".tl-zoom-area");
+    if (!$za[0]) return;
+    var level = _c() ? _c().zoom : 1;
+    var natW = $za[0].scrollWidth;
+    var natH = $za[0].scrollHeight;
+    $za.css({ width: natW * level + "px", height: natH * level + "px" });
+  }
+
+  // Expand grid so it always fills the visible canvas at the given zoom level
+  function _expandToFill(zoom) {
+    var cfg = GridCore.getConfig();
+    if (!cfg.infiniteGrid) return;
+    var canvasEl = _TL.$(".tl-canvas")[0];
+    if (!canvasEl) return;
+    var canvasW = canvasEl.clientWidth;
+    var canvasH = canvasEl.clientHeight;
+    if (!canvasW || !canvasH) return;
+    var unit = cfg.cellSize + cfg.gap;
+    var neededCols = Math.ceil(canvasW / (zoom * unit)) + 1;
+    var neededRows = Math.ceil(canvasH / (zoom * unit)) + 1;
+    if (neededCols > cfg.columns || neededRows > cfg.rows) {
+      GridRender.expandGridDOM(
+        Math.max(cfg.columns, neededCols),
+        Math.max(cfg.rows, neededRows)
+      );
+    }
   }
 
   function bindWheelZoom() {
@@ -2139,6 +2228,7 @@ var GridZoom = (function () {
     destroy: destroy,
     buildControls: buildControls,
     applyZoom: applyZoom,
+    syncZoomArea: syncZoomArea,
     bindWheelZoom: bindWheelZoom,
     getZoom: getZoom,
   };
@@ -2485,6 +2575,8 @@ var GridDrag = (function () {
         e.originalEvent.clientX,
         e.originalEvent.clientY,
       );
+      GridRender.maybeExpand(pos.col + t.colSpan - 1, pos.row + t.rowSpan - 1);
+      _autoScroll(e.originalEvent.clientX, e.originalEvent.clientY);
       var bad = GridCore.hasCollision(
         pos.col,
         pos.row,
@@ -2579,6 +2671,17 @@ var GridDrag = (function () {
       ctx.$ghost.remove();
       ctx.$ghost = null;
     }
+  }
+
+  function _autoScroll(clientX, clientY) {
+    var canvasEl = _TL.$(".tl-canvas")[0];
+    if (!canvasEl) return;
+    var rect = canvasEl.getBoundingClientRect();
+    var MARGIN = 60, SPEED = 12;
+    if      (clientX > rect.right  - MARGIN) canvasEl.scrollLeft += SPEED;
+    else if (clientX < rect.left   + MARGIN) canvasEl.scrollLeft = Math.max(0, canvasEl.scrollLeft - SPEED);
+    if      (clientY > rect.bottom - MARGIN) canvasEl.scrollTop  += SPEED;
+    else if (clientY < rect.top    + MARGIN) canvasEl.scrollTop  = Math.max(0, canvasEl.scrollTop  - SPEED);
   }
 
   return { init: init, destroy: destroy, bind: bind, unbind: unbind };
@@ -2711,6 +2814,7 @@ var GridResize = (function () {
       newRowSpan = side;
     }
 
+    GridRender.maybeExpand(ctx.origTable.col + newColSpan - 1, ctx.origTable.row + newRowSpan - 1);
     var bad = GridCore.hasCollision(ctx.origTable.col, ctx.origTable.row, newColSpan, newRowSpan, ctx.tableId);
     _showGhost(ctx.origTable.col, ctx.origTable.row, newColSpan, newRowSpan, bad);
   }
@@ -3774,6 +3878,8 @@ var GridPlace = (function () {
       if (!GridToolbar.getActive() || !ctx.start) return;
       var end = GridCore.cursorToGrid(e.originalEvent.clientX, e.originalEvent.clientY);
       var span = GridCore.calcSpan(ctx.start, end, GridToolbar.getActive());
+      GridRender.maybeExpand(span.col + span.colSpan - 1, span.row + span.rowSpan - 1);
+      _autoScrollCanvas(e.originalEvent.clientX, e.originalEvent.clientY);
       var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
       _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
     });
@@ -3866,6 +3972,17 @@ var GridPlace = (function () {
       ctx.$ghost.remove();
       ctx.$ghost = null;
     }
+  }
+
+  function _autoScrollCanvas(clientX, clientY) {
+    var canvasEl = _TL.$(".tl-canvas")[0];
+    if (!canvasEl) return;
+    var rect = canvasEl.getBoundingClientRect();
+    var MARGIN = 60, SPEED = 12;
+    if      (clientX > rect.right  - MARGIN) canvasEl.scrollLeft += SPEED;
+    else if (clientX < rect.left   + MARGIN) canvasEl.scrollLeft = Math.max(0, canvasEl.scrollLeft - SPEED);
+    if      (clientY > rect.bottom - MARGIN) canvasEl.scrollTop  += SPEED;
+    else if (clientY < rect.top    + MARGIN) canvasEl.scrollTop  = Math.max(0, canvasEl.scrollTop  - SPEED);
   }
 
   function _showModal(placement) {

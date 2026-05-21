@@ -18,6 +18,7 @@ var GridConfig = (function () {
     showSizeBadge: true,
     showHint: false,
     showGridLines: true, // false hides grid lines even in edit mode
+    infiniteGrid: true,  // grid auto-expands when dragging/placing/resizing near the edge
     mode: 'edit', // 'edit' or 'view' — determines whether the 'Edit Layout' option appears in the settings popup
 
     theme: {

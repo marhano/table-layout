@@ -241,6 +241,8 @@ var GridDrag = (function () {
         e.originalEvent.clientX,
         e.originalEvent.clientY,
       );
+      GridRender.maybeExpand(pos.col + t.colSpan - 1, pos.row + t.rowSpan - 1);
+      _autoScroll(e.originalEvent.clientX, e.originalEvent.clientY);
       var bad = GridCore.hasCollision(
         pos.col,
         pos.row,
@@ -335,6 +337,17 @@ var GridDrag = (function () {
       ctx.$ghost.remove();
       ctx.$ghost = null;
     }
+  }
+
+  function _autoScroll(clientX, clientY) {
+    var canvasEl = _TL.$(".tl-canvas")[0];
+    if (!canvasEl) return;
+    var rect = canvasEl.getBoundingClientRect();
+    var MARGIN = 60, SPEED = 12;
+    if      (clientX > rect.right  - MARGIN) canvasEl.scrollLeft += SPEED;
+    else if (clientX < rect.left   + MARGIN) canvasEl.scrollLeft = Math.max(0, canvasEl.scrollLeft - SPEED);
+    if      (clientY > rect.bottom - MARGIN) canvasEl.scrollTop  += SPEED;
+    else if (clientY < rect.top    + MARGIN) canvasEl.scrollTop  = Math.max(0, canvasEl.scrollTop  - SPEED);
   }
 
   return { init: init, destroy: destroy, bind: bind, unbind: unbind };

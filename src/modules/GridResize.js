@@ -123,6 +123,7 @@ var GridResize = (function () {
       newRowSpan = side;
     }
 
+    GridRender.maybeExpand(ctx.origTable.col + newColSpan - 1, ctx.origTable.row + newRowSpan - 1);
     var bad = GridCore.hasCollision(ctx.origTable.col, ctx.origTable.row, newColSpan, newRowSpan, ctx.tableId);
     _showGhost(ctx.origTable.col, ctx.origTable.row, newColSpan, newRowSpan, bad);
   }
