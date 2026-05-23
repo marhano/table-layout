@@ -10,7 +10,7 @@ var GridLayers = (function () {
   function _c() { return _inst[_TL.cid()]; }
 
   function init() {
-    _inst[_TL.cid()] = { $tabBar: null };
+    _inst[_TL.cid()] = { $tabBar: null, $scrollArea: null };
   }
 
   function destroy() {
@@ -20,6 +20,8 @@ var GridLayers = (function () {
   function buildTabBar() {
     var ctx = _c();
     ctx.$tabBar = jQuery("<div>").addClass("tl-tab-bar");
+    ctx.$scrollArea = jQuery("<div>").addClass("tl-tab-scroll-area");
+    ctx.$tabBar.append(ctx.$scrollArea);
     _renderTabs();
 
     GridEvents.on("layer:added", function () { _renderTabs(); });
@@ -34,7 +36,7 @@ var GridLayers = (function () {
   function _renderTabs() {
     var ctx = _c();
     if (!ctx || !ctx.$tabBar) return;
-    ctx.$tabBar.empty();
+    ctx.$scrollArea.empty();
 
     var cid = _TL.cid();
     var cfg = GridCore.getConfig();
@@ -51,14 +53,14 @@ var GridLayers = (function () {
       var $label = jQuery("<span>").addClass("tl-tab-label").text(layer.label);
       $tab.append($icon, $label);
 
-      if (layers.length > 1 && cfg.realTime === false && GridCore.isEditing()) {
+      if (layers.length > 1 && cfg.mode === "edit") {
         var $close = jQuery("<span>")
           .addClass("tl-tab-close")
           .html("&times;")
           .on("click", function (e) {
             e.stopPropagation();
             _TL.use(cid);
-            if (cfg.realTime === false && !GridCore.isEditing()) return;
+            if (GridCore.isEditing()) return;
             _confirmDeleteLayer(layer);
           });
         $tab.append($close);
@@ -74,14 +76,14 @@ var GridLayers = (function () {
 
       $tab.on("dragstart", function (e) {
         _TL.use(cid);
-        if (cfg.realTime === false && !GridCore.isEditing()) { e.preventDefault(); return; }
+        if (GridCore.isEditing()) { e.preventDefault(); return; }
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", layer.id);
         $tab.addClass("tl-tab--dragging");
       });
       $tab.on("dragend", function () {
         $tab.removeClass("tl-tab--dragging");
-        ctx.$tabBar.find(".tl-tab--drag-over").removeClass("tl-tab--drag-over");
+        ctx.$scrollArea.find(".tl-tab--drag-over").removeClass("tl-tab--drag-over");
       });
       $tab.on("dragover", function (e) {
         e.preventDefault();
@@ -106,62 +108,29 @@ var GridLayers = (function () {
         GridCore.reorderLayers(currentIds);
       });
 
-      $tab.on("dblclick", function (e) {
-        e.stopPropagation();
-        _TL.use(cid);
-        if (cfg.realTime !== false || !GridCore.isEditing()) return;
-        _startTabRename($tab, layer);
-      });
-
-      ctx.$tabBar.append($tab);
+      ctx.$scrollArea.append($tab);
     });
+  }
 
-    var $addTab = jQuery("<div>")
+  function buildAddButton() {
+    var cid = _TL.cid();
+    return jQuery("<div>")
       .addClass("tl-tab-add")
       .attr("title", "Add Floor")
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
         _TL.use(cid);
-        if (cfg.realTime === false && !GridCore.isEditing()) return;
+        var cfg = GridCore.getConfig();
         if (typeof cfg.onCreateLayer === "function") {
-          cfg.onCreateLayer(function (details) {
-            _TL.use(cid);
-            _createNewLayer(details);
-          });
+          cfg.onCreateLayer(function (details) { _TL.use(cid); _createNewLayer(details); });
           return;
         }
         _openAddFloorModal();
       });
-    ctx.$tabBar.append($addTab);
   }
 
   function renderTabs() {
     _renderTabs();
-  }
-
-  function _startTabRename($tab, layer) {
-    var $label = $tab.find(".tl-tab-label");
-    var $input = jQuery("<input>")
-      .addClass("tl-tab-rename-input")
-      .attr({ type: "text", maxlength: 30 })
-      .val(layer.label);
-    $label.replaceWith($input);
-    $input.trigger("focus").trigger("select");
-
-    function commit() {
-      var val = jQuery.trim($input.val());
-      if (val && val !== layer.label) {
-        GridCore.updateLayerMeta(layer.id, { label: val });
-      }
-      _renderTabs();
-    }
-
-    $input.on("blur", commit);
-    $input.on("keydown", function (e) {
-      if (e.key === "Enter") { e.preventDefault(); $input.trigger("blur"); }
-      if (e.key === "Escape") { _renderTabs(); }
-    });
-    $input.on("click", function (e) { e.stopPropagation(); });
   }
 
   function _openAddFloorModal() {
@@ -278,6 +247,8 @@ var GridLayers = (function () {
   }
 
   function _createNewLayer(details) {
+    var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
     var label = (details && details.label) || "Floor";
     var icon = (details && details.icon) || label.charAt(0).toUpperCase();
     var layer = {
@@ -292,8 +263,20 @@ var GridLayers = (function () {
       }],
     };
     GridCore.addLayer(layer);
-    GridCore.switchLayer(layer.id);
-    _rebuildGrid();
+    // Only switch to new floor when not currently editing the table grid
+    if (!GridCore.isEditing()) {
+      GridCore.switchLayer(layer.id);
+      _rebuildGrid();
+    }
+    if (typeof cfg.onAddFloor === "function") {
+      var rollback = function () {
+        _TL.use(cid);
+        var wasThisActive = (GridCore.getActiveLayerId() === layer.id);
+        GridCore.deleteLayer(layer.id);
+        if (wasThisActive) _rebuildGrid();
+      };
+      cfg.onAddFloor(layer, rollback);
+    }
   }
 
   function _confirmDeleteLayer(layer) {
@@ -316,9 +299,23 @@ var GridLayers = (function () {
       .on("click", function () {
         $overlay.remove();
         _TL.use(cid);
+        var layers = GridCore.getLayers();
+        var originalIdx = layers.findIndex(function (l) { return l.id === layer.id; });
         var wasActive = (layer.id === GridCore.getActiveLayerId());
         GridCore.deleteLayer(layer.id);
         if (wasActive) _rebuildGrid();
+        if (typeof cfg.onDeleteFloor === "function") {
+          var rollback = function () {
+            _TL.use(cid);
+            GridCore.getLayers().splice(originalIdx, 0, layer);
+            if (wasActive) {
+              GridCore.switchLayer(layer.id);
+              _rebuildGrid();
+            }
+            _renderTabs();
+          };
+          cfg.onDeleteFloor(layer, rollback);
+        }
       });
     $actions.append($cancel, $confirm);
     $modal.append($actions);
@@ -355,6 +352,7 @@ var GridLayers = (function () {
     init: init,
     destroy: destroy,
     buildTabBar: buildTabBar,
+    buildAddButton: buildAddButton,
     renderTabs: renderTabs,
   };
 })();

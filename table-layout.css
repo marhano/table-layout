@@ -513,13 +513,28 @@
     display: flex;
     align-items: stretch;
     gap: 0;
+    flex: 1 1 0;        /* fill toolbar, leaving room for + button and right section */
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Collapse the spacer when a tab bar is present — tab bar itself fills the space */
+.tl-tab-bar ~ .tl-toolbar-spacer {
+    flex: 0 0 0;
+    min-width: 0;
+}
+
+.tl-tab-scroll-area {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
 }
 
-.tl-tab-bar::-webkit-scrollbar {
+.tl-tab-scroll-area::-webkit-scrollbar {
     display: none;
 }
 
@@ -537,7 +552,9 @@
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
-    min-width: 0;
+    flex: 1 1 0;
+    min-width: 90px;
+    max-width: 240px;   /* cap width — tabs don't grow past this, like browser tabs */
     position: relative;
     transition: color 0.15s;
     user-select: none;
@@ -565,9 +582,35 @@
     border-radius: 2px 2px 0 0;
 }
 
+/* Separator between floor tabs */
+.tl-tab::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: var(--tl-border);
+    transition: opacity 0.12s;
+}
+
+.tl-tab:first-child::before {
+    opacity: 0;
+}
+
+.tl-tab:hover::before,
+.tl-tab--active::before,
+.tl-tab:hover + .tl-tab::before,
+.tl-tab--active + .tl-tab::before {
+    opacity: 0;
+}
+
 .tl-tab-label {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
     pointer-events: none;
 }
 
@@ -575,13 +618,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
     border: none;
     background: transparent;
     color: var(--tl-surface-subtle);
-    font-size: 0.6rem;
+    font-size: 0.85rem;
     cursor: pointer;
     flex-shrink: 0;
     opacity: 0;
@@ -601,26 +644,28 @@
 }
 
 .tl-tab-add {
-    align-self: center;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1.5px dashed var(--tl-surface-subtle);
+    width: 36px;
+    height: 100%;
+    border: none;
+    border-left: 1px solid var(--tl-border);
     background: transparent;
-    color: var(--tl-surface-subtle);
-    font-size: 0.7rem;
+    color: var(--tl-surface-muted);
+    font-size: 0.75rem;
     cursor: pointer;
     flex-shrink: 0;
-    margin-left: 8px;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-    visibility: hidden;
+    transition: background 0.15s, color 0.15s;
 }
 
+.tl-mode-edit .tl-tab-add,
+.tl-edit-mode .tl-tab-add {
+    display: flex;
+}
+
+.tl-mode-edit .tl-tab-add:hover,
 .tl-edit-mode .tl-tab-add:hover {
-    border-color: var(--tl-primary);
     color: var(--tl-primary);
     background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
 }
@@ -718,9 +763,35 @@
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
+    flex: 1 1 0;
+    min-width: 90px;
+    max-width: 240px;
     position: relative;
     transition: color 0.15s;
     user-select: none;
+}
+
+/* Separator between room tabs */
+.tl-room-tab::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: var(--tl-border);
+    transition: opacity 0.12s;
+}
+
+.tl-room-tab:first-child::before {
+    opacity: 0;
+}
+
+.tl-room-tab:hover::before,
+.tl-room-tab--active::before,
+.tl-room-tab:hover + .tl-room-tab::before,
+.tl-room-tab--active + .tl-room-tab::before {
+    opacity: 0;
 }
 
 .tl-room-tab:hover {
@@ -761,6 +832,9 @@
 .tl-room-tab-label {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
     pointer-events: none;
 }
 
@@ -768,13 +842,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border-radius: 4px;
     border: none;
     background: transparent;
     color: var(--tl-surface-subtle);
-    font-size: 0.65rem;
+    font-size: 0.85rem;
     cursor: pointer;
     flex-shrink: 0;
     opacity: 0;
@@ -818,6 +892,7 @@
     transition: background 0.15s, color 0.15s;
 }
 
+.tl-mode-edit .tl-room-tab-add:hover,
 .tl-edit-mode .tl-room-tab-add:hover {
     color: var(--tl-primary);
     background: color-mix(in srgb, var(--tl-primary) 6%, transparent);
@@ -850,6 +925,7 @@
     cursor: not-allowed;
 }
 
+.tl-mode-edit .tl-room-tab-add,
 .tl-edit-mode .tl-room-tab-add {
     display: flex;
 }
@@ -871,9 +947,7 @@
     cursor: not-allowed;
 }
 
-.tl-edit-mode .tl-tab-add {
-    visibility: visible;
-}
+/* tl-tab-add visibility already handled above */
 
 /* ── Shape Tool Buttons ── */
 .tl-shape-tool-btn {

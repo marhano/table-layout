@@ -276,7 +276,7 @@ var GridRooms = (function () {
     // Drag-to-reorder events
     $item.on("dragstart", function (e) {
       _TL.use(cid);
-      if (cfg.editMode !== false && !GridCore.isEditing()) { e.preventDefault(); return; }
+      if (GridCore.isEditing()) { e.preventDefault(); return; }
       e.originalEvent.dataTransfer.effectAllowed = "move";
       e.originalEvent.dataTransfer.setData("text/plain", room.id);
       $item.addClass("tl-rooms-item--dragging");
@@ -320,7 +320,7 @@ var GridRooms = (function () {
     var _touchDragging = false;
     $item.on("touchstart", function (e) {
       _TL.use(cid);
-      if (cfg.editMode !== false && !GridCore.isEditing()) return;
+      if (GridCore.isEditing()) return;
       if (e.originalEvent.touches.length !== 1) return;
       _touchDragging = false;
       _touchTimer = setTimeout(function () {
@@ -397,11 +397,8 @@ var GridRooms = (function () {
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
         _TL.use(cid);
-        if (cfg.editMode !== false && !GridCore.isEditing()) return;
         if (typeof cfg.onCreateRoom === "function") {
-          cfg.onCreateRoom(function (details) {
-            _createRoom(details, $panel);
-          });
+          cfg.onCreateRoom(function (details) { _TL.use(cid); _createRoom(details, $panel); });
           return;
         }
         _openAddModal($panel);
@@ -524,6 +521,8 @@ var GridRooms = (function () {
   }
 
   function _createRoom(details, $panel) {
+    var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
     var label = details.label || "Room";
     var room = {
       id: "room-" + Date.now(),
@@ -532,12 +531,27 @@ var GridRooms = (function () {
       tables: [],
     };
     GridCore.addRoom(room);
-    GridCore.switchRoom(room.id);
-    _rebuildGrid();
+    // Only switch to new room when not currently editing the table grid
+    if (!GridCore.isEditing()) {
+      GridCore.switchRoom(room.id);
+      _rebuildGrid();
+    }
     if ($panel) _renderPanelContent($panel);
-    var cfg = GridCore.getConfig();
-    if (typeof cfg.onRoomChange === "function")
-      cfg.onRoomChange(room, []);
+    if (typeof cfg.onRoomChange === "function") cfg.onRoomChange(room, []);
+    if (typeof cfg.onAddRoom === "function") {
+      var rollback = function () {
+        _TL.use(cid);
+        var wasThisActive = (GridCore.getActiveRoomId() === room.id);
+        GridCore.deleteRoom(room.id);
+        if (wasThisActive) _rebuildGrid();
+        var ctx = _c();
+        if (ctx && ctx.$wrap) {
+          var $livePanel = ctx.$wrap.find(".tl-rooms-panel");
+          if ($livePanel.length) _renderPanelContent($livePanel);
+        }
+      };
+      cfg.onAddRoom(room, rollback);
+    }
   }
 
   // ── Grid rebuild on room switch ───────────────────
@@ -586,11 +600,8 @@ var GridRooms = (function () {
       .on("click", function () {
         _TL.use(cid);
         var cfg = GridCore.getConfig();
-        if (cfg.realTime === false && !GridCore.isEditing()) return;
         if (typeof cfg.onCreateRoom === "function") {
-          cfg.onCreateRoom(function (details) {
-            _createRoom(details);
-          });
+          cfg.onCreateRoom(function (details) { _TL.use(cid); _createRoom(details); });
           return;
         }
         _openAddModal();
@@ -649,14 +660,14 @@ var GridRooms = (function () {
       var $label = jQuery("<span>").addClass("tl-room-tab-label").text(room.label);
       $tab.append($icon, $label);
 
-      if (rooms.length > 1 && cfg.realTime === false && GridCore.isEditing()) {
+      if (rooms.length > 1 && cfg.mode === "edit") {
         var $close = jQuery("<span>")
           .addClass("tl-room-tab-close")
           .html("&times;")
           .on("click", function (e) {
             _TL.use(cid);
             e.stopPropagation();
-            if (cfg.realTime === false && !GridCore.isEditing()) return;
+            if (GridCore.isEditing()) return;
             _confirmDeleteRoomTab(room);
           });
         $tab.append($close);
@@ -675,7 +686,7 @@ var GridRooms = (function () {
       // Drag-to-reorder
       $tab.on("dragstart", function (e) {
         _TL.use(cid);
-        if (cfg.realTime === false && !GridCore.isEditing()) { e.preventDefault(); return; }
+        if (GridCore.isEditing()) { e.preventDefault(); return; }
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", room.id);
         $tab.addClass("tl-room-tab--dragging");
@@ -709,14 +720,6 @@ var GridRooms = (function () {
         GridCore.reorderRooms(currentIds);
       });
 
-      // Double-click to rename
-      $tab.on("dblclick", function (e) {
-        _TL.use(cid);
-        e.stopPropagation();
-        if (cfg.realTime !== false || !GridCore.isEditing()) return;
-        _startRoomTabRename($tab, room);
-      });
-
       $scrollArea.append($tab);
     });
 
@@ -739,33 +742,6 @@ var GridRooms = (function () {
     return $icon;
   }
 
-  function _startRoomTabRename($tab, room) {
-    var cid = _TL.cid();
-    var $label = $tab.find(".tl-room-tab-label");
-    var $input = jQuery("<input>")
-      .addClass("tl-room-tab-rename-input")
-      .attr({ type: "text", maxlength: 30 })
-      .val(room.label);
-    $label.replaceWith($input);
-    $input.trigger("focus").trigger("select");
-
-    function commit() {
-      _TL.use(cid);
-      var val = jQuery.trim($input.val());
-      if (val && val !== room.label) {
-        GridCore.updateRoomMeta(room.id, { label: val });
-      }
-      _renderRoomTabs();
-    }
-
-    $input.on("blur", commit);
-    $input.on("keydown", function (e) {
-      if (e.key === "Enter") { e.preventDefault(); $input.trigger("blur"); }
-      if (e.key === "Escape") { _TL.use(cid); _renderRoomTabs(); }
-    });
-    $input.on("click", function (e) { e.stopPropagation(); });
-  }
-
   function _confirmDeleteRoomTab(room) {
     var cfg = GridCore.getConfig();
     var cid = _TL.cid();
@@ -786,16 +762,39 @@ var GridRooms = (function () {
       .on("click", function () {
         _TL.use(cid);
         $overlay.remove();
+        var activeLayer = GridCore.getActiveLayer();
+        var originalIdx = activeLayer
+          ? activeLayer.rooms.findIndex(function (r) { return r.id === room.id; })
+          : -1;
         var wasActive = (room.id === GridCore.getActiveRoomId());
         GridCore.deleteRoom(room.id);
         if (wasActive) _rebuildGrid();
         if (typeof cfg.onRoomChange === "function")
           cfg.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
+        if (typeof cfg.onDeleteRoom === "function") {
+          var rollback = function () {
+            _TL.use(cid);
+            var layer = GridCore.getActiveLayer();
+            if (!layer) return;
+            layer.rooms.splice(originalIdx >= 0 ? originalIdx : layer.rooms.length, 0, room);
+            GridEvents.emit("room:added", room);
+            if (wasActive) {
+              GridCore.switchRoom(room.id);
+              _rebuildGrid();
+            }
+            var ctx = _c();
+            if (ctx && ctx.$wrap) {
+              var $livePanel = ctx.$wrap.find(".tl-rooms-panel");
+              if ($livePanel.length) _renderPanelContent($livePanel);
+            }
+          };
+          cfg.onDeleteRoom(room, rollback);
+        }
       });
     $actions.append($cancel, $confirm);
     $modal.append($actions);
     $overlay.append($modal);
-    jQuery("#" + _TL.cid()).append($overlay);
+    jQuery("#" + cid).append($overlay);
     $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
 

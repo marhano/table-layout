@@ -196,6 +196,7 @@ var GridCore = (function () {
     var layer = c.layers.find(function (l) { return l.id === id; });
     if (!layer) return false;
     if (props.label !== undefined) layer.label = props.label;
+    if (props.icon  !== undefined) layer.icon  = props.icon;
     GridEvents.emit("layer:updated", layer);
     return true;
   }
@@ -315,11 +316,9 @@ var GridCore = (function () {
     var c = _c();
     if (c.editMode) return;
     _saveCurrentTables();
+    // Snapshot only table data — floor/room changes are always immediate
     c.snapshot = {
       tables: jQuery.extend(true, [], c.tables),
-      layers: c.layers ? jQuery.extend(true, [], c.layers) : null,
-      activeLayerId: c.activeLayerId,
-      activeRoomId: c.activeRoomId,
     };
     c.editMode = true;
     GridEvents.emit("edit:enter");
@@ -337,17 +336,22 @@ var GridCore = (function () {
   function discardEdit() {
     var c = _c();
     if (!c.editMode) return;
-    c.layers = c.snapshot.layers ? jQuery.extend(true, [], c.snapshot.layers) : null;
-    c.activeLayerId = c.snapshot.activeLayerId;
-    c.activeRoomId = c.snapshot.activeRoomId;
+    // Restore only table data; floor/room structure is unaffected
     c.tables = jQuery.extend(true, [], c.snapshot.tables);
     c.counter = c.tables.length + 1;
     c.snapshot = null;
     c.editMode = false;
-    var restoredRoom = getActiveRoom();
-    if (restoredRoom) GridEvents.emit("room:updated", restoredRoom);
-    var restoredLayer = getActiveLayer();
-    if (restoredLayer) GridEvents.emit("layer:updated", restoredLayer);
+    // Write restored tables back into the active room so future room switches see correct data
+    _saveCurrentTables();
+    // Notify UI to refresh
+    if (c.layers) {
+      var layer = c.layers.find(function (l) { return l.id === c.activeLayerId; });
+      if (layer) {
+        var room = layer.rooms.find(function (r) { return r.id === c.activeRoomId; });
+        if (room) GridEvents.emit("room:updated", room);
+        GridEvents.emit("layer:updated", layer);
+      }
+    }
     GridEvents.emit("edit:discarded");
     GridEvents.emit("edit:exit");
   }

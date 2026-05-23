@@ -39,6 +39,7 @@ var GridToolbar = (function () {
     // Left: layer tabs (delegated to GridLayers)
     if (cfg.layers && cfg.layers.length) {
       $toolbar.append(GridLayers.buildTabBar());
+      if (cfg.mode === "edit") $toolbar.append(GridLayers.buildAddButton());
 
       GridEvents.on("layer:switched", function () {
         _refreshRoomDisplay(GridCore.getActiveRoom());
@@ -449,7 +450,7 @@ var GridToolbar = (function () {
 
     var $popup = jQuery("<div>").addClass("tl-settings-popup");
 
-    // Edit option (only when realTime is false, mode is not 'view', and not currently editing)
+    // Edit table layout (enter table-grid edit mode)
     if (cfg.realTime === false && cfg.mode !== "view" && !GridCore.isEditing()) {
       var $editOpt = jQuery("<button>")
         .addClass("tl-settings-option")
@@ -462,10 +463,265 @@ var GridToolbar = (function () {
       $popup.append($editOpt);
     }
 
+    // Edit Floor / Edit Room (only when layers are configured)
+    if (cfg.layers && cfg.layers.length) {
+      var activeLayer = GridCore.getActiveLayer();
+      var activeRoom  = GridCore.getActiveRoom();
+
+      if (activeLayer) {
+        var $editFloorOpt = jQuery("<button>")
+          .addClass("tl-settings-option")
+          .html('<i class="fa-solid fa-layer-group"></i><span>Edit Floor: ' + activeLayer.label + '</span>')
+          .on("click", function () {
+            _TL.use(cid);
+            _closeSettingsPopup();
+            _openEditFloorModal(activeLayer);
+          });
+        $popup.append($editFloorOpt);
+      }
+
+      if (activeRoom) {
+        var $editRoomOpt = jQuery("<button>")
+          .addClass("tl-settings-option")
+          .html('<i class="fa-solid fa-door-open"></i><span>Edit Room: ' + activeRoom.label + '</span>')
+          .on("click", function () {
+            _TL.use(cid);
+            _closeSettingsPopup();
+            _openEditRoomModal(activeRoom);
+          });
+        $popup.append($editRoomOpt);
+      }
+    }
+
     $anchor.append($popup);
     _c().$settingsPopup = $popup;
 
     setTimeout(function () { $popup.addClass("tl-settings-popup--open"); }, 10);
+  }
+
+  // ── Edit Floor modal ──────────────────────────────
+
+  function _openEditFloorModal(layer) {
+    var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
+    var pickerCfg = cfg.iconPicker || {};
+    var icons = pickerCfg.icons || [];
+    var maxText = pickerCfg.maxTextLength || 4;
+    var allowText = pickerCfg.allowText !== false;
+    var _selectedIcon = layer.icon || "";
+
+    var $overlay = jQuery("<div>").addClass("tl-overlay");
+    var $modal = jQuery("<div>").addClass("tl-modal");
+
+    $modal.append(
+      jQuery("<h2>").html('<i class="fa-solid fa-layer-group"></i> Edit Floor')
+    );
+
+    var $nameField = jQuery("<div>").addClass("tl-field");
+    $nameField.append(jQuery("<label>").text("Name"));
+    var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Floor name", maxlength: 30 }).val(layer.label);
+    $nameField.append($nameInput);
+
+    var $iconField = jQuery("<div>").addClass("tl-field");
+    $iconField.append(jQuery("<label>").text("Icon"));
+    var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
+
+    function _updatePreview(val) {
+      $iconPreview.empty();
+      if (!val) { $iconPreview.text("?"); return; }
+      if (val.indexOf("fa-") !== -1) {
+        $iconPreview.append(jQuery("<i>").addClass(val));
+      } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
+        $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
+      } else {
+        $iconPreview.text(val);
+      }
+    }
+    _updatePreview(_selectedIcon);
+    $iconField.append($iconPreview);
+
+    var $textInput = null;
+
+    if (icons.length) {
+      var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
+      jQuery.each(icons, function (_, ico) {
+        var $btn = jQuery("<button>")
+          .addClass("tl-icon-picker-btn" + (layer.icon === ico.value ? " tl-icon-picker-btn--active" : ""))
+          .attr({ title: ico.label || "", type: "button" })
+          .on("click", function () {
+            _selectedIcon = ico.value;
+            $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+            jQuery(this).addClass("tl-icon-picker-btn--active");
+            if ($textInput) $textInput.val("");
+            _updatePreview(_selectedIcon);
+          });
+        if (ico.type === "fa") { $btn.append(jQuery("<i>").addClass(ico.value)); }
+        else if (ico.type === "svg" || ico.type === "img") { $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img")); }
+        else { $btn.text(ico.value); }
+        $grid.append($btn);
+      });
+      $iconField.append($grid);
+    }
+
+    if (allowText) {
+      var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
+      $textInput = jQuery("<input>")
+        .addClass("tl-icon-picker-text-input")
+        .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
+        .val(
+          _selectedIcon && _selectedIcon.indexOf("fa-") === -1 && !/\.(svg|png|jpe?g|gif|webp)/i.test(_selectedIcon)
+            ? _selectedIcon : ""
+        )
+        .on("input", function () {
+          var v = jQuery.trim(jQuery(this).val());
+          if (v) {
+            _selectedIcon = v;
+            $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+            _updatePreview(v);
+          }
+        });
+      $textRow.append($textInput);
+      $iconField.append($textRow);
+    }
+
+    var $actions = jQuery("<div>").addClass("tl-modal-actions");
+    var $cancel = jQuery("<button>").addClass("tl-btn tl-btn-cancel").text("Cancel")
+      .on("click", function () { $overlay.remove(); });
+    var $save = jQuery("<button>").addClass("tl-btn tl-btn-primary").text("Save")
+      .on("click", function () {
+        _TL.use(cid);
+        var labelVal = jQuery.trim($nameInput.val());
+        if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
+        $nameInput.removeClass("tl-input-error");
+        $overlay.remove();
+        GridCore.updateLayerMeta(layer.id, {
+          label: labelVal,
+          icon: _selectedIcon || labelVal.charAt(0).toUpperCase()
+        });
+      });
+
+    $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
+    $nameInput.on("keydown", function (e) { if (e.key === "Enter") $save.trigger("click"); });
+
+    $actions.append($cancel, $save);
+    $modal.append($nameField, $iconField, $actions);
+    $overlay.append($modal);
+    jQuery("#" + cid).append($overlay);
+    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    setTimeout(function () { $nameInput.trigger("focus"); }, 50);
+  }
+
+  // ── Edit Room modal ───────────────────────────────
+
+  function _openEditRoomModal(room) {
+    var cfg = GridCore.getConfig();
+    var cid = _TL.cid();
+    var pickerCfg = cfg.iconPicker || {};
+    var icons = pickerCfg.icons || [];
+    var maxText = pickerCfg.maxTextLength || 4;
+    var allowText = pickerCfg.allowText !== false;
+    var _selectedIcon = room.icon || "";
+
+    var $overlay = jQuery("<div>").addClass("tl-overlay");
+    var $modal = jQuery("<div>").addClass("tl-modal");
+
+    $modal.append(
+      jQuery("<h2>").html('<i class="fa-solid fa-door-open"></i> Edit Room')
+    );
+
+    var $nameField = jQuery("<div>").addClass("tl-field");
+    $nameField.append(jQuery("<label>").text("Name"));
+    var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Room name", maxlength: 30 }).val(room.label);
+    $nameField.append($nameInput);
+
+    var $iconField = jQuery("<div>").addClass("tl-field");
+    $iconField.append(jQuery("<label>").text("Icon"));
+    var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
+
+    function _updatePreview(val) {
+      $iconPreview.empty();
+      if (!val) { $iconPreview.text("?"); return; }
+      if (val.indexOf("fa-") !== -1) {
+        $iconPreview.append(jQuery("<i>").addClass(val));
+      } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
+        $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
+      } else {
+        $iconPreview.text(val);
+      }
+    }
+    _updatePreview(_selectedIcon);
+    $iconField.append($iconPreview);
+
+    var $textInput = null;
+
+    if (icons.length) {
+      var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
+      jQuery.each(icons, function (_, ico) {
+        var $btn = jQuery("<button>")
+          .addClass("tl-icon-picker-btn" + (room.icon === ico.value ? " tl-icon-picker-btn--active" : ""))
+          .attr({ title: ico.label || "", type: "button" })
+          .on("click", function () {
+            _selectedIcon = ico.value;
+            $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+            jQuery(this).addClass("tl-icon-picker-btn--active");
+            if ($textInput) $textInput.val("");
+            _updatePreview(_selectedIcon);
+          });
+        if (ico.type === "fa") { $btn.append(jQuery("<i>").addClass(ico.value)); }
+        else if (ico.type === "svg" || ico.type === "img") { $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img")); }
+        else { $btn.text(ico.value); }
+        $grid.append($btn);
+      });
+      $iconField.append($grid);
+    }
+
+    if (allowText) {
+      var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
+      $textInput = jQuery("<input>")
+        .addClass("tl-icon-picker-text-input")
+        .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
+        .val(
+          _selectedIcon && _selectedIcon.indexOf("fa-") === -1 && !/\.(svg|png|jpe?g|gif|webp)/i.test(_selectedIcon)
+            ? _selectedIcon : ""
+        )
+        .on("input", function () {
+          var v = jQuery.trim(jQuery(this).val());
+          if (v) {
+            _selectedIcon = v;
+            $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+            _updatePreview(v);
+          }
+        });
+      $textRow.append($textInput);
+      $iconField.append($textRow);
+    }
+
+    var $actions = jQuery("<div>").addClass("tl-modal-actions");
+    var $cancel = jQuery("<button>").addClass("tl-btn tl-btn-cancel").text("Cancel")
+      .on("click", function () { $overlay.remove(); });
+    var $save = jQuery("<button>").addClass("tl-btn tl-btn-primary").text("Save")
+      .on("click", function () {
+        _TL.use(cid);
+        var labelVal = jQuery.trim($nameInput.val());
+        if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
+        $nameInput.removeClass("tl-input-error");
+        $overlay.remove();
+        GridCore.updateRoomMeta(room.id, {
+          label: labelVal,
+          icon: _selectedIcon || labelVal.charAt(0).toUpperCase()
+        });
+        _refreshRoomDisplay(GridCore.getActiveRoom());
+      });
+
+    $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
+    $nameInput.on("keydown", function (e) { if (e.key === "Enter") $save.trigger("click"); });
+
+    $actions.append($cancel, $save);
+    $modal.append($nameField, $iconField, $actions);
+    $overlay.append($modal);
+    jQuery("#" + cid).append($overlay);
+    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
 
   function _handleEdit() {
