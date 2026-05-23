@@ -431,7 +431,7 @@ var GridPlace = (function () {
       $el:       $wrap,
       getValue:  function () { return _selected; },
       isLoading: function () { return _loading; },
-      setItems:  function (items) { _items = items; if (_isOpen) _renderList(); },
+      setItems:  function (items) { _items = items; if (items.length > 0) { _selected = items[0]; _updateTrigger(); } if (_isOpen) _renderList(); },
       setLoading: function (val) { _loading = val; _updateTrigger(); if (_isOpen) _renderList(); },
     };
   }

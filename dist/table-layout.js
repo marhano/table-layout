@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-05-23T16:43:16.189Z
+ * Built: 2026-05-23T19:05:48.303Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -2320,36 +2320,30 @@ var GridToolbar = (function () {
 
       var activeLayer = GridCore.getActiveLayer();
       var activeRoom  = GridCore.getActiveRoom();
+      function _mapTable(t) {
+        return {
+          id:      t.id,
+          name:    t.name,
+          seats:   t.seats,
+          status:  t.status,
+          shape:   t.shape,
+          col:     t.col,
+          row:     t.row,
+          colSpan: t.colSpan,
+          rowSpan: t.rowSpan,
+        };
+      }
+
       cfg.onLayoutChange({
         mapId:   cfg.mapId   !== undefined ? cfg.mapId   : null,
         floorId: activeLayer ? activeLayer.id : null,
         roomId:  activeRoom  ? activeRoom.id  : null,
-        tables: changed.map(function (t) {
-          return {
-            id:      t.id,
-            name:    t.name,
-            seats:   t.seats,
-            status:  t.status,
-            shape:   t.shape,
-            col:     t.col,
-            row:     t.row,
-            colSpan: t.colSpan,
-            rowSpan: t.rowSpan,
-          };
-        }).concat(deleted.map(function (t) {
-          return {
-            id:      t.id,
-            name:    t.name,
-            seats:   t.seats,
-            status:  t.status,
-            shape:   t.shape,
-            col:     t.col,
-            row:     t.row,
-            colSpan: t.colSpan,
-            rowSpan: t.rowSpan,
-            deleted: true,
-          };
-        })),
+        tables: changed.map(_mapTable).concat(
+          deleted.map(function (t) {
+            return jQuery.extend(_mapTable(t), { deleted: true });
+          })
+        ),
+        currentTables: snapshotTables.map(_mapTable),
       });
     }
 
@@ -4307,7 +4301,7 @@ var GridEdit = (function () {
       $el:        $wrap,
       getValue:   function () { return _selected; },
       isLoading:  function () { return _loading; },
-      setItems:   function (items) { _items = items; if (_isOpen) _renderList(); },
+      setItems:   function (items) { _items = items; if (items.length > 0) { _selected = items[0]; _updateTrigger(); } if (_isOpen) _renderList(); },
       setLoading: function (val) { _loading = val; _updateTrigger(); if (_isOpen) _renderList(); },
     };
   }
@@ -4754,7 +4748,7 @@ var GridPlace = (function () {
       $el:       $wrap,
       getValue:  function () { return _selected; },
       isLoading: function () { return _loading; },
-      setItems:  function (items) { _items = items; if (_isOpen) _renderList(); },
+      setItems:  function (items) { _items = items; if (items.length > 0) { _selected = items[0]; _updateTrigger(); } if (_isOpen) _renderList(); },
       setLoading: function (val) { _loading = val; _updateTrigger(); if (_isOpen) _renderList(); },
     };
   }
