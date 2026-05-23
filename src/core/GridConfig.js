@@ -146,6 +146,7 @@ var GridConfig = (function () {
     onRoomDelete: null, // fn(removedRoom) — fired when a room is deleted
     onRoomReorder: null, // fn(rooms) — fired when rooms are reordered
     onCreateRoom: null, // fn(commit) — override the default add-room form; call commit({label, icon})
+    onUpdateRoom: null, // fn(room) — fired when room label/icon is updated; room has mapId, floorId, id, label
     onTableClick: null, // fn(table) — fired when a table card is clicked (view mode only, not during edit)
   };
 

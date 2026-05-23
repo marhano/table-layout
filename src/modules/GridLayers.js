@@ -33,6 +33,17 @@ var GridLayers = (function () {
     return ctx.$tabBar;
   }
 
+  function _getNextFloorNumber() {
+    var used = {};
+    GridCore.getLayers().forEach(function (l) {
+      var n = parseInt(l.id, 10);
+      if (!isNaN(n) && n > 0) used[n] = true;
+    });
+    var n = 1;
+    while (used[n]) n++;
+    return n;
+  }
+
   function _renderTabs() {
     var ctx = _c();
     if (!ctx || !ctx.$tabBar) return;
@@ -40,18 +51,25 @@ var GridLayers = (function () {
 
     var cid = _TL.cid();
     var cfg = GridCore.getConfig();
+    var showIcons = cfg.showIcons !== false;
+    var autoName = cfg.autoNameFloors === true;
     var layers = GridCore.getLayers();
+    if (autoName) {
+      layers = layers.slice().sort(function (a, b) {
+        return parseInt(a.id, 10) - parseInt(b.id, 10);
+      });
+    }
     var activeId = GridCore.getActiveLayerId();
 
     jQuery.each(layers, function (_, layer) {
       var isActive = layer.id === activeId;
       var $tab = jQuery("<div>")
         .addClass("tl-tab" + (isActive ? " tl-tab--active" : ""))
-        .attr({ "data-layer-id": layer.id, "draggable": "true" });
+        .attr({ "data-layer-id": layer.id, "draggable": autoName ? "false" : "true" });
 
-      var $icon = _buildIconBadge(layer);
       var $label = jQuery("<span>").addClass("tl-tab-label").text(layer.label);
-      $tab.append($icon, $label);
+      if (showIcons) $tab.append(_buildIconBadge(layer));
+      $tab.append($label);
 
       if (layers.length > 1 && cfg.mode === "edit") {
         var $close = jQuery("<span>")
@@ -74,39 +92,41 @@ var GridLayers = (function () {
         _rebuildGrid();
       });
 
-      $tab.on("dragstart", function (e) {
-        _TL.use(cid);
-        if (GridCore.isEditing()) { e.preventDefault(); return; }
-        e.originalEvent.dataTransfer.effectAllowed = "move";
-        e.originalEvent.dataTransfer.setData("text/plain", layer.id);
-        $tab.addClass("tl-tab--dragging");
-      });
-      $tab.on("dragend", function () {
-        $tab.removeClass("tl-tab--dragging");
-        ctx.$scrollArea.find(".tl-tab--drag-over").removeClass("tl-tab--drag-over");
-      });
-      $tab.on("dragover", function (e) {
-        e.preventDefault();
-        e.originalEvent.dataTransfer.dropEffect = "move";
-        $tab.addClass("tl-tab--drag-over");
-      });
-      $tab.on("dragleave", function () {
-        $tab.removeClass("tl-tab--drag-over");
-      });
-      $tab.on("drop", function (e) {
-        e.preventDefault();
-        _TL.use(cid);
-        $tab.removeClass("tl-tab--drag-over");
-        var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
-        if (draggedId === layer.id) return;
-        var currentIds = layers.map(function (l) { return l.id; });
-        var fromIdx = currentIds.indexOf(draggedId);
-        var toIdx = currentIds.indexOf(layer.id);
-        if (fromIdx === -1 || toIdx === -1) return;
-        currentIds.splice(fromIdx, 1);
-        currentIds.splice(toIdx, 0, draggedId);
-        GridCore.reorderLayers(currentIds);
-      });
+      if (!autoName) {
+        $tab.on("dragstart", function (e) {
+          _TL.use(cid);
+          if (GridCore.isEditing()) { e.preventDefault(); return; }
+          e.originalEvent.dataTransfer.effectAllowed = "move";
+          e.originalEvent.dataTransfer.setData("text/plain", layer.id);
+          $tab.addClass("tl-tab--dragging");
+        });
+        $tab.on("dragend", function () {
+          $tab.removeClass("tl-tab--dragging");
+          ctx.$scrollArea.find(".tl-tab--drag-over").removeClass("tl-tab--drag-over");
+        });
+        $tab.on("dragover", function (e) {
+          e.preventDefault();
+          e.originalEvent.dataTransfer.dropEffect = "move";
+          $tab.addClass("tl-tab--drag-over");
+        });
+        $tab.on("dragleave", function () {
+          $tab.removeClass("tl-tab--drag-over");
+        });
+        $tab.on("drop", function (e) {
+          e.preventDefault();
+          _TL.use(cid);
+          $tab.removeClass("tl-tab--drag-over");
+          var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
+          if (draggedId === layer.id) return;
+          var currentIds = layers.map(function (l) { return l.id; });
+          var fromIdx = currentIds.indexOf(draggedId);
+          var toIdx = currentIds.indexOf(layer.id);
+          if (fromIdx === -1 || toIdx === -1) return;
+          currentIds.splice(fromIdx, 1);
+          currentIds.splice(toIdx, 0, draggedId);
+          GridCore.reorderLayers(currentIds);
+        });
+      }
 
       ctx.$scrollArea.append($tab);
     });
@@ -120,6 +140,7 @@ var GridLayers = (function () {
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
         _TL.use(cid);
+        if (GridCore.isEditing()) return;
         var cfg = GridCore.getConfig();
         if (typeof cfg.onCreateLayer === "function") {
           cfg.onCreateLayer(function (details) { _TL.use(cid); _createNewLayer(details); });
@@ -136,6 +157,8 @@ var GridLayers = (function () {
   function _openAddFloorModal() {
     var cfg = GridCore.getConfig();
     var cid = _TL.cid();
+    var showIcons = cfg.showIcons !== false;
+    var autoName = cfg.autoNameFloors === true;
     var pickerCfg = cfg.iconPicker || {};
     var icons = pickerCfg.icons || [];
     var maxText = pickerCfg.maxTextLength || 4;
@@ -151,70 +174,76 @@ var GridLayers = (function () {
 
     var $nameField = jQuery("<div>").addClass("tl-field");
     $nameField.append(jQuery("<label>").text("Name"));
+    var autoLabel = autoName ? ("Floor " + _getNextFloorNumber()) : null;
     var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Floor name", maxlength: 30 });
+    if (autoName) $nameInput.val(autoLabel).prop("disabled", true);
     $nameField.append($nameInput);
 
-    var $iconField = jQuery("<div>").addClass("tl-field");
-    $iconField.append(jQuery("<label>").text("Icon"));
-
-    var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
-    $iconPreview.text("?");
-    $iconField.append($iconPreview);
-
-    function _updatePreview(val) {
-      $iconPreview.empty();
-      if (!val) { $iconPreview.text("?"); return; }
-      if (val.indexOf("fa-") !== -1) {
-        $iconPreview.append(jQuery("<i>").addClass(val));
-      } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
-        $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
-      } else {
-        $iconPreview.text(val);
-      }
-    }
-
-    if (icons.length) {
-      var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
-      jQuery.each(icons, function (_, ico) {
-        var $btn = jQuery("<button>")
-          .addClass("tl-icon-picker-btn")
-          .attr({ "title": ico.label || "", "type": "button" })
-          .on("click", function () {
-            _selectedIcon = ico.value;
-            $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            jQuery(this).addClass("tl-icon-picker-btn--active");
-            if ($textInput) $textInput.val("");
-            _updatePreview(_selectedIcon);
-          });
-
-        if (ico.type === "fa") {
-          $btn.append(jQuery("<i>").addClass(ico.value));
-        } else if (ico.type === "svg" || ico.type === "img") {
-          $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img"));
-        } else {
-          $btn.text(ico.value);
-        }
-        $grid.append($btn);
-      });
-      $iconField.append($grid);
-    }
-
+    var $iconField = null;
     var $textInput = null;
-    if (allowText) {
-      var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
-      $textInput = jQuery("<input>")
-        .addClass("tl-icon-picker-text-input")
-        .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
-        .on("input", function () {
-          var v = jQuery.trim(jQuery(this).val());
-          if (v) {
-            _selectedIcon = v;
-            $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            _updatePreview(v);
+
+    if (showIcons) {
+      $iconField = jQuery("<div>").addClass("tl-field");
+      $iconField.append(jQuery("<label>").text("Icon"));
+
+      var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
+      $iconPreview.text("?");
+      $iconField.append($iconPreview);
+
+      function _updatePreview(val) {
+        $iconPreview.empty();
+        if (!val) { $iconPreview.text("?"); return; }
+        if (val.indexOf("fa-") !== -1) {
+          $iconPreview.append(jQuery("<i>").addClass(val));
+        } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
+          $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
+        } else {
+          $iconPreview.text(val);
+        }
+      }
+
+      if (icons.length) {
+        var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
+        jQuery.each(icons, function (_, ico) {
+          var $btn = jQuery("<button>")
+            .addClass("tl-icon-picker-btn")
+            .attr({ "title": ico.label || "", "type": "button" })
+            .on("click", function () {
+              _selectedIcon = ico.value;
+              $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              jQuery(this).addClass("tl-icon-picker-btn--active");
+              if ($textInput) $textInput.val("");
+              _updatePreview(_selectedIcon);
+            });
+
+          if (ico.type === "fa") {
+            $btn.append(jQuery("<i>").addClass(ico.value));
+          } else if (ico.type === "svg" || ico.type === "img") {
+            $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img"));
+          } else {
+            $btn.text(ico.value);
           }
+          $grid.append($btn);
         });
-      $textRow.append($textInput);
-      $iconField.append($textRow);
+        $iconField.append($grid);
+      }
+
+      if (allowText) {
+        var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
+        $textInput = jQuery("<input>")
+          .addClass("tl-icon-picker-text-input")
+          .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
+          .on("input", function () {
+            var v = jQuery.trim(jQuery(this).val());
+            if (v) {
+              _selectedIcon = v;
+              $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              _updatePreview(v);
+            }
+          });
+        $textRow.append($textInput);
+        $iconField.append($textRow);
+      }
     }
 
     var $actions = jQuery("<div>").addClass("tl-modal-actions");
@@ -224,20 +253,32 @@ var GridLayers = (function () {
 
     var $create = jQuery("<button>").addClass("tl-btn tl-btn-primary").text("Add Floor")
       .on("click", function () {
-        var labelVal = jQuery.trim($nameInput.val());
-        if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
-        $nameInput.removeClass("tl-input-error");
-        var iconVal = _selectedIcon || labelVal.charAt(0).toUpperCase();
+        var details = {};
+        if (!autoName) {
+          var labelVal = jQuery.trim($nameInput.val());
+          if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
+          $nameInput.removeClass("tl-input-error");
+          details.label = labelVal;
+          if (showIcons) details.icon = _selectedIcon || labelVal.charAt(0).toUpperCase();
+        } else {
+          if (showIcons) details.icon = _selectedIcon || undefined;
+        }
         $overlay.remove();
         _TL.use(cid);
-        _createNewLayer({ label: labelVal, icon: iconVal });
+        _createNewLayer(details);
       });
 
-    $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
-    $nameInput.on("keydown", function (e) { if (e.key === "Enter") $create.trigger("click"); });
+    if (!autoName) {
+      $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
+      $nameInput.on("keydown", function (e) { if (e.key === "Enter") $create.trigger("click"); });
+    }
 
     $actions.append($cancel, $create);
-    $modal.append($nameField, $iconField, $actions);
+    if (showIcons) {
+      $modal.append($nameField, $iconField, $actions);
+    } else {
+      $modal.append($nameField, $actions);
+    }
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
 
@@ -249,16 +290,27 @@ var GridLayers = (function () {
   function _createNewLayer(details) {
     var cfg = GridCore.getConfig();
     var cid = _TL.cid();
-    var label = (details && details.label) || "Floor";
-    var icon = (details && details.icon) || label.charAt(0).toUpperCase();
+    var showIcons = cfg.showIcons !== false;
+    var autoName = cfg.autoNameFloors === true;
+
+    var floorNum, layerId, label;
+    if (autoName) {
+      floorNum = _getNextFloorNumber();
+      layerId = floorNum;
+      label = "Floor " + floorNum;
+    } else {
+      layerId = "floor-" + Date.now();
+      label = (details && details.label) || "Floor";
+    }
+
     var layer = {
-      id: "floor-" + Date.now(),
+      id: layerId,
       label: label,
-      icon: icon,
+      icon: showIcons ? ((details && details.icon) || label.charAt(0).toUpperCase()) : undefined,
       rooms: [{
-        id: "room-" + Date.now(),
+        id: autoName ? 1 : "room-" + Date.now(),
         label: "Room 1",
-        icon: "fa-solid fa-utensils",
+        icon: showIcons ? "fa-solid fa-utensils" : undefined,
         tables: [],
       }],
     };
@@ -275,7 +327,9 @@ var GridLayers = (function () {
         GridCore.deleteLayer(layer.id);
         if (wasThisActive) _rebuildGrid();
       };
-      cfg.onAddFloor(layer, rollback);
+      var callbackLayer = jQuery.extend(true, {}, layer);
+      if (cfg.mapId !== undefined) callbackLayer.mapId = cfg.mapId;
+      cfg.onAddFloor(callbackLayer, rollback);
     }
   }
 
@@ -314,7 +368,9 @@ var GridLayers = (function () {
             }
             _renderTabs();
           };
-          cfg.onDeleteFloor(layer, rollback);
+          var callbackLayer = jQuery.extend(true, {}, layer);
+          if (cfg.mapId !== undefined) callbackLayer.mapId = cfg.mapId;
+          cfg.onDeleteFloor(callbackLayer, rollback);
         }
       });
     $actions.append($cancel, $confirm);

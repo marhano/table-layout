@@ -369,19 +369,22 @@ var GridRooms = (function () {
         cfg.onLayoutChange(GridCore.getLayout());
     });
 
-    var isFaIcon = room.icon && room.icon.indexOf("fa-") !== -1;
-    var $icon = jQuery("<div>").addClass("tl-rooms-icon");
-    if (isFaIcon) {
-      $icon.append(jQuery("<i>").addClass(room.icon));
-    } else if (room.icon && /\.(svg|png|jpe?g|gif|webp)/i.test(room.icon)) {
-      $icon.append(jQuery("<img>").attr("src", room.icon).css({ width: "18px", height: "18px", "object-fit": "contain" }));
-    } else {
-      $icon.text(room.icon || "?");
-    }
-
     var $label = jQuery("<span>").addClass("tl-rooms-label").text(room.label);
 
-    $item.append($icon, $label);
+    if (cfg.showIcons !== false) {
+      var isFaIcon = room.icon && room.icon.indexOf("fa-") !== -1;
+      var $icon = jQuery("<div>").addClass("tl-rooms-icon");
+      if (isFaIcon) {
+        $icon.append(jQuery("<i>").addClass(room.icon));
+      } else if (room.icon && /\.(svg|png|jpe?g|gif|webp)/i.test(room.icon)) {
+        $icon.append(jQuery("<img>").attr("src", room.icon).css({ width: "18px", height: "18px", "object-fit": "contain" }));
+      } else {
+        $icon.text(room.icon || "?");
+      }
+      $item.append($icon);
+    }
+
+    $item.append($label);
 
     return $item;
   }
@@ -397,6 +400,7 @@ var GridRooms = (function () {
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
         _TL.use(cid);
+        if (GridCore.isEditing()) return;
         if (typeof cfg.onCreateRoom === "function") {
           cfg.onCreateRoom(function (details) { _TL.use(cid); _createRoom(details, $panel); });
           return;
@@ -410,6 +414,8 @@ var GridRooms = (function () {
   function _openAddModal($panel) {
     var cfg = GridCore.getConfig();
     var cid = _TL.cid();
+    var showIcons = cfg.showIcons !== false;
+    var autoName = cfg.autoNameFloors === true;
     var pickerCfg = cfg.iconPicker || {};
     var icons = pickerCfg.icons || [];
     var maxText = pickerCfg.maxTextLength || 4;
@@ -426,69 +432,74 @@ var GridRooms = (function () {
     var $nameField = jQuery("<div>").addClass("tl-field");
     $nameField.append(jQuery("<label>").text("Name"));
     var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Room name", maxlength: 30 });
+    if (autoName) $nameInput.val("Room " + _getNextRoomNumber());
     $nameField.append($nameInput);
 
-    var $iconField = jQuery("<div>").addClass("tl-field");
-    $iconField.append(jQuery("<label>").text("Icon"));
-
-    var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
-    $iconPreview.text("?");
-    $iconField.append($iconPreview);
-
-    function _updatePreview(val) {
-      $iconPreview.empty();
-      if (!val) { $iconPreview.text("?"); return; }
-      if (val.indexOf("fa-") !== -1) {
-        $iconPreview.append(jQuery("<i>").addClass(val));
-      } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
-        $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
-      } else {
-        $iconPreview.text(val);
-      }
-    }
-
-    if (icons.length) {
-      var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
-      jQuery.each(icons, function (_, ico) {
-        var $btn = jQuery("<button>")
-          .addClass("tl-icon-picker-btn")
-          .attr({ "title": ico.label || "", "type": "button" })
-          .on("click", function () {
-            _selectedIcon = ico.value;
-            $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            jQuery(this).addClass("tl-icon-picker-btn--active");
-            if ($textInput) $textInput.val("");
-            _updatePreview(_selectedIcon);
-          });
-
-        if (ico.type === "fa") {
-          $btn.append(jQuery("<i>").addClass(ico.value));
-        } else if (ico.type === "svg" || ico.type === "img") {
-          $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img"));
-        } else {
-          $btn.text(ico.value);
-        }
-        $grid.append($btn);
-      });
-      $iconField.append($grid);
-    }
-
+    var $iconField = null;
     var $textInput = null;
-    if (allowText) {
-      var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
-      $textInput = jQuery("<input>")
-        .addClass("tl-icon-picker-text-input")
-        .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
-        .on("input", function () {
-          var v = jQuery.trim(jQuery(this).val());
-          if (v) {
-            _selectedIcon = v;
-            $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            _updatePreview(v);
+
+    if (showIcons) {
+      $iconField = jQuery("<div>").addClass("tl-field");
+      $iconField.append(jQuery("<label>").text("Icon"));
+
+      var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
+      $iconPreview.text("?");
+      $iconField.append($iconPreview);
+
+      function _updatePreview(val) {
+        $iconPreview.empty();
+        if (!val) { $iconPreview.text("?"); return; }
+        if (val.indexOf("fa-") !== -1) {
+          $iconPreview.append(jQuery("<i>").addClass(val));
+        } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
+          $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
+        } else {
+          $iconPreview.text(val);
+        }
+      }
+
+      if (icons.length) {
+        var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
+        jQuery.each(icons, function (_, ico) {
+          var $btn = jQuery("<button>")
+            .addClass("tl-icon-picker-btn")
+            .attr({ "title": ico.label || "", "type": "button" })
+            .on("click", function () {
+              _selectedIcon = ico.value;
+              $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              jQuery(this).addClass("tl-icon-picker-btn--active");
+              if ($textInput) $textInput.val("");
+              _updatePreview(_selectedIcon);
+            });
+
+          if (ico.type === "fa") {
+            $btn.append(jQuery("<i>").addClass(ico.value));
+          } else if (ico.type === "svg" || ico.type === "img") {
+            $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img"));
+          } else {
+            $btn.text(ico.value);
           }
+          $grid.append($btn);
         });
-      $textRow.append($textInput);
-      $iconField.append($textRow);
+        $iconField.append($grid);
+      }
+
+      if (allowText) {
+        var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
+        $textInput = jQuery("<input>")
+          .addClass("tl-icon-picker-text-input")
+          .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
+          .on("input", function () {
+            var v = jQuery.trim(jQuery(this).val());
+            if (v) {
+              _selectedIcon = v;
+              $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              _updatePreview(v);
+            }
+          });
+        $textRow.append($textInput);
+        $iconField.append($textRow);
+      }
     }
 
     var $actions = jQuery("<div>").addClass("tl-modal-actions");
@@ -502,16 +513,21 @@ var GridRooms = (function () {
         var labelVal = jQuery.trim($nameInput.val());
         if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
         $nameInput.removeClass("tl-input-error");
-        var iconVal = _selectedIcon || labelVal.charAt(0).toUpperCase();
+        var details = { label: labelVal };
+        if (showIcons) details.icon = _selectedIcon || labelVal.charAt(0).toUpperCase();
         $overlay.remove();
-        _createRoom({ label: labelVal, icon: iconVal }, $panel);
+        _createRoom(details, $panel);
       });
 
     $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
     $nameInput.on("keydown", function (e) { if (e.key === "Enter") $create.trigger("click"); });
 
     $actions.append($cancel, $create);
-    $modal.append($nameField, $iconField, $actions);
+    if (showIcons) {
+      $modal.append($nameField, $iconField, $actions);
+    } else {
+      $modal.append($nameField, $actions);
+    }
     $overlay.append($modal);
     jQuery("#" + _TL.cid()).append($overlay);
 
@@ -520,14 +536,36 @@ var GridRooms = (function () {
     setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
 
+  function _getNextRoomNumber() {
+    var used = {};
+    GridCore.getRooms().forEach(function (r) {
+      var n = parseInt(r.id, 10);
+      if (!isNaN(n) && n > 0) used[n] = true;
+    });
+    var n = 1;
+    while (used[n]) n++;
+    return n;
+  }
+
   function _createRoom(details, $panel) {
     var cfg = GridCore.getConfig();
     var cid = _TL.cid();
-    var label = details.label || "Room";
+    var autoName = cfg.autoNameFloors === true;
+
+    var roomId, label;
+    if (autoName) {
+      var roomNum = _getNextRoomNumber();
+      roomId = roomNum;
+      label = (details && details.label) || ("Room " + roomNum);
+    } else {
+      roomId = "room-" + Date.now();
+      label = (details && details.label) || "Room";
+    }
+
     var room = {
-      id: "room-" + Date.now(),
+      id: roomId,
       label: label,
-      icon: details.icon || label.charAt(0).toUpperCase(),
+      icon: cfg.showIcons !== false ? ((details && details.icon) || label.charAt(0).toUpperCase()) : undefined,
       tables: [],
     };
     GridCore.addRoom(room);
@@ -550,7 +588,11 @@ var GridRooms = (function () {
           if ($livePanel.length) _renderPanelContent($livePanel);
         }
       };
-      cfg.onAddRoom(room, rollback);
+      var activeLayer = GridCore.getActiveLayer();
+      var callbackRoom = jQuery.extend(true, {}, room);
+      if (cfg.mapId !== undefined) callbackRoom.mapId = cfg.mapId;
+      callbackRoom.floorId = activeLayer ? activeLayer.id : null;
+      cfg.onAddRoom(callbackRoom, rollback);
     }
   }
 
@@ -599,6 +641,7 @@ var GridRooms = (function () {
       .html('<i class="fa-solid fa-plus"></i>')
       .on("click", function () {
         _TL.use(cid);
+        if (GridCore.isEditing()) return;
         var cfg = GridCore.getConfig();
         if (typeof cfg.onCreateRoom === "function") {
           cfg.onCreateRoom(function (details) { _TL.use(cid); _createRoom(details); });
@@ -646,19 +689,26 @@ var GridRooms = (function () {
     $scrollArea.empty();
 
     var cfg = GridCore.getConfig();
-    var rooms = GridCore.getRooms();
     var activeId = GridCore.getActiveRoomId();
     var cid = _TL.cid();
+    var showIcons = cfg.showIcons !== false;
+    var autoName = cfg.autoNameFloors === true;
+    var rooms = GridCore.getRooms();
+    if (autoName) {
+      rooms = rooms.slice().sort(function (a, b) {
+        return parseInt(a.id, 10) - parseInt(b.id, 10);
+      });
+    }
 
     jQuery.each(rooms, function (_, room) {
       var isActive = room.id === activeId;
       var $tab = jQuery("<div>")
         .addClass("tl-room-tab" + (isActive ? " tl-room-tab--active" : ""))
-        .attr({ "data-room-id": room.id, "draggable": "true" });
+        .attr({ "data-room-id": room.id, "draggable": autoName ? "false" : "true" });
 
-      var $icon = _buildRoomTabIcon(room);
       var $label = jQuery("<span>").addClass("tl-room-tab-label").text(room.label);
-      $tab.append($icon, $label);
+      if (showIcons) $tab.append(_buildRoomTabIcon(room));
+      $tab.append($label);
 
       if (rooms.length > 1 && cfg.mode === "edit") {
         var $close = jQuery("<span>")
@@ -684,41 +734,43 @@ var GridRooms = (function () {
       });
 
       // Drag-to-reorder
-      $tab.on("dragstart", function (e) {
-        _TL.use(cid);
-        if (GridCore.isEditing()) { e.preventDefault(); return; }
-        e.originalEvent.dataTransfer.effectAllowed = "move";
-        e.originalEvent.dataTransfer.setData("text/plain", room.id);
-        $tab.addClass("tl-room-tab--dragging");
-      });
-      $tab.on("dragend", function () {
-        _TL.use(cid);
-        $tab.removeClass("tl-room-tab--dragging");
-        var c = _c();
-        c.$roomTabBar.find(".tl-room-tab--drag-over").removeClass("tl-room-tab--drag-over");
-      });
-      $tab.on("dragover", function (e) {
-        e.preventDefault();
-        e.originalEvent.dataTransfer.dropEffect = "move";
-        $tab.addClass("tl-room-tab--drag-over");
-      });
-      $tab.on("dragleave", function () {
-        $tab.removeClass("tl-room-tab--drag-over");
-      });
-      $tab.on("drop", function (e) {
-        _TL.use(cid);
-        e.preventDefault();
-        $tab.removeClass("tl-room-tab--drag-over");
-        var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
-        if (draggedId === room.id) return;
-        var currentIds = rooms.map(function (r) { return r.id; });
-        var fromIdx = currentIds.indexOf(draggedId);
-        var toIdx = currentIds.indexOf(room.id);
-        if (fromIdx === -1 || toIdx === -1) return;
-        currentIds.splice(fromIdx, 1);
-        currentIds.splice(toIdx, 0, draggedId);
-        GridCore.reorderRooms(currentIds);
-      });
+      if (!autoName) {
+        $tab.on("dragstart", function (e) {
+          _TL.use(cid);
+          if (GridCore.isEditing()) { e.preventDefault(); return; }
+          e.originalEvent.dataTransfer.effectAllowed = "move";
+          e.originalEvent.dataTransfer.setData("text/plain", room.id);
+          $tab.addClass("tl-room-tab--dragging");
+        });
+        $tab.on("dragend", function () {
+          _TL.use(cid);
+          $tab.removeClass("tl-room-tab--dragging");
+          var c = _c();
+          c.$roomTabBar.find(".tl-room-tab--drag-over").removeClass("tl-room-tab--drag-over");
+        });
+        $tab.on("dragover", function (e) {
+          e.preventDefault();
+          e.originalEvent.dataTransfer.dropEffect = "move";
+          $tab.addClass("tl-room-tab--drag-over");
+        });
+        $tab.on("dragleave", function () {
+          $tab.removeClass("tl-room-tab--drag-over");
+        });
+        $tab.on("drop", function (e) {
+          _TL.use(cid);
+          e.preventDefault();
+          $tab.removeClass("tl-room-tab--drag-over");
+          var draggedId = e.originalEvent.dataTransfer.getData("text/plain");
+          if (draggedId === room.id) return;
+          var currentIds = rooms.map(function (r) { return r.id; });
+          var fromIdx = currentIds.indexOf(draggedId);
+          var toIdx = currentIds.indexOf(room.id);
+          if (fromIdx === -1 || toIdx === -1) return;
+          currentIds.splice(fromIdx, 1);
+          currentIds.splice(toIdx, 0, draggedId);
+          GridCore.reorderRooms(currentIds);
+        });
+      }
 
       $scrollArea.append($tab);
     });
@@ -788,7 +840,11 @@ var GridRooms = (function () {
               if ($livePanel.length) _renderPanelContent($livePanel);
             }
           };
-          cfg.onDeleteRoom(room, rollback);
+          var deletedLayer = GridCore.getActiveLayer();
+          var callbackRoom = jQuery.extend(true, {}, room);
+          if (cfg.mapId !== undefined) callbackRoom.mapId = cfg.mapId;
+          callbackRoom.floorId = deletedLayer ? deletedLayer.id : null;
+          cfg.onDeleteRoom(callbackRoom, rollback);
         }
       });
     $actions.append($cancel, $confirm);

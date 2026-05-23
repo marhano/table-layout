@@ -16,7 +16,6 @@ var GridToolbar = (function () {
       $layoutName: null,
       $layoutIcon: null,
       $editSection: null,
-      nameEditing: false,
       $iconPicker: null,
       $settingsPopup: null
     };
@@ -63,11 +62,7 @@ var GridToolbar = (function () {
 
       ctx.$layoutName = jQuery("<span>")
         .addClass("tl-toolbar-layout-name")
-        .text(activeRoom ? activeRoom.label : "")
-        .on("click", function () {
-          _TL.use(cid);
-          _startNameEdit();
-        });
+        .text(activeRoom ? activeRoom.label : "");
 
       GridEvents.on("room:switched", function (room) {
         _refreshRoomDisplay(room);
@@ -127,7 +122,7 @@ var GridToolbar = (function () {
 
   function _refreshRoomDisplay(room) {
     var ctx = _c();
-    if (ctx.$layoutName && !ctx.nameEditing) {
+    if (ctx.$layoutName) {
       ctx.$layoutName.text(room ? room.label : "");
     }
     if (ctx.$layoutIcon) {
@@ -136,77 +131,10 @@ var GridToolbar = (function () {
     }
   }
 
-  // ── Inline name editing (click to edit room name) ──
-
-  function _startNameEdit() {
-    var cfg = GridCore.getConfig();
-    var ctx = _c();
-    var cid = _TL.cid();
-    if (!cfg.layers || !cfg.layers.length) return;
-    if (cfg.realTime !== false || !GridCore.isEditing()) return;
-    if (ctx.nameEditing) return;
-    var room = GridCore.getActiveRoom();
-    if (!room) return;
-
-    ctx.nameEditing = true;
-    var $input = jQuery("<input>")
-      .addClass("tl-toolbar-layout-name-input")
-      .attr({ type: "text", maxlength: 30, placeholder: "Room name" })
-      .val(room.label);
-
-    ctx.$layoutName.replaceWith($input);
-    ctx.$layoutName = $input;
-    $input.trigger("focus").trigger("select");
-
-    function commit() {
-      _TL.use(cid);
-      var ctx2 = _c();
-      if (!ctx2.nameEditing) return;
-      ctx2.nameEditing = false;
-      var val = jQuery.trim($input.val());
-      if (val && val !== room.label) {
-        GridCore.updateRoomMeta(room.id, { label: val });
-        var c = GridCore.getConfig();
-        if (typeof c.onRoomChange === "function" && (c.realTime !== false || GridCore.isEditing()))
-          c.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
-      }
-      var updatedRoom = GridCore.getActiveRoom();
-      var $span = jQuery("<span>")
-        .addClass("tl-toolbar-layout-name")
-        .text(updatedRoom ? updatedRoom.label : "")
-        .on("click", function () {
-          _TL.use(cid);
-          _startNameEdit();
-        });
-      $input.replaceWith($span);
-      ctx2.$layoutName = $span;
-    }
-
-    $input.on("blur", commit);
-    $input.on("keydown", function (e) {
-      if (e.key === "Enter") { e.preventDefault(); $input.trigger("blur"); }
-      if (e.key === "Escape") {
-        _TL.use(cid);
-        var ctx2 = _c();
-        ctx2.nameEditing = false;
-        var $span = jQuery("<span>")
-          .addClass("tl-toolbar-layout-name")
-          .text(room.label)
-          .on("click", function () {
-            _TL.use(cid);
-            _startNameEdit();
-          });
-        $input.replaceWith($span);
-        ctx2.$layoutName = $span;
-      }
-    });
-  }
-
   // ── Icon picker popup (for room icon) ─────────────
 
   function _toggleIconPicker() {
-    var cfg = GridCore.getConfig();
-    if (cfg.realTime !== false || !GridCore.isEditing()) return;
+    if (GridCore.isEditing()) return;
     if (_c().$iconPicker) {
       _closeIconPicker();
     } else {
@@ -345,6 +273,16 @@ var GridToolbar = (function () {
     var ctx = _c();
     if (typeof cfg.onRoomChange === "function" && !GridCore.isEditing())
       cfg.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
+    if (typeof cfg.onUpdateRoom === "function") {
+      var iconLayer = GridCore.getActiveLayer();
+      var iconRoom  = GridCore.getActiveRoom();
+      cfg.onUpdateRoom({
+        mapId:   cfg.mapId !== undefined ? cfg.mapId : null,
+        floorId: iconLayer ? iconLayer.id : null,
+        id:      iconRoom  ? iconRoom.id  : room.id,
+        label:   iconRoom  ? iconRoom.label : room.label,
+      });
+    }
     var updated = GridCore.getActiveRoom();
     ctx.$layoutIcon.find(".tl-icon-picker").detach();
     _renderIconContent(ctx.$layoutIcon, updated.icon, updated.label);
@@ -468,7 +406,7 @@ var GridToolbar = (function () {
       var activeLayer = GridCore.getActiveLayer();
       var activeRoom  = GridCore.getActiveRoom();
 
-      if (activeLayer) {
+      if (activeLayer && cfg.autoNameFloors !== true) {
         var $editFloorOpt = jQuery("<button>")
           .addClass("tl-settings-option")
           .html('<i class="fa-solid fa-layer-group"></i><span>Edit Floor: ' + activeLayer.label + '</span>')
@@ -504,6 +442,7 @@ var GridToolbar = (function () {
   function _openEditFloorModal(layer) {
     var cfg = GridCore.getConfig();
     var cid = _TL.cid();
+    var showIcons = cfg.showIcons !== false;
     var pickerCfg = cfg.iconPicker || {};
     var icons = pickerCfg.icons || [];
     var maxText = pickerCfg.maxTextLength || 4;
@@ -522,66 +461,69 @@ var GridToolbar = (function () {
     var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Floor name", maxlength: 30 }).val(layer.label);
     $nameField.append($nameInput);
 
-    var $iconField = jQuery("<div>").addClass("tl-field");
-    $iconField.append(jQuery("<label>").text("Icon"));
-    var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
-
-    function _updatePreview(val) {
-      $iconPreview.empty();
-      if (!val) { $iconPreview.text("?"); return; }
-      if (val.indexOf("fa-") !== -1) {
-        $iconPreview.append(jQuery("<i>").addClass(val));
-      } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
-        $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
-      } else {
-        $iconPreview.text(val);
-      }
-    }
-    _updatePreview(_selectedIcon);
-    $iconField.append($iconPreview);
-
+    var $iconField = null;
     var $textInput = null;
 
-    if (icons.length) {
-      var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
-      jQuery.each(icons, function (_, ico) {
-        var $btn = jQuery("<button>")
-          .addClass("tl-icon-picker-btn" + (layer.icon === ico.value ? " tl-icon-picker-btn--active" : ""))
-          .attr({ title: ico.label || "", type: "button" })
-          .on("click", function () {
-            _selectedIcon = ico.value;
-            $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            jQuery(this).addClass("tl-icon-picker-btn--active");
-            if ($textInput) $textInput.val("");
-            _updatePreview(_selectedIcon);
-          });
-        if (ico.type === "fa") { $btn.append(jQuery("<i>").addClass(ico.value)); }
-        else if (ico.type === "svg" || ico.type === "img") { $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img")); }
-        else { $btn.text(ico.value); }
-        $grid.append($btn);
-      });
-      $iconField.append($grid);
-    }
+    if (showIcons) {
+      $iconField = jQuery("<div>").addClass("tl-field");
+      $iconField.append(jQuery("<label>").text("Icon"));
+      var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
 
-    if (allowText) {
-      var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
-      $textInput = jQuery("<input>")
-        .addClass("tl-icon-picker-text-input")
-        .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
-        .val(
-          _selectedIcon && _selectedIcon.indexOf("fa-") === -1 && !/\.(svg|png|jpe?g|gif|webp)/i.test(_selectedIcon)
-            ? _selectedIcon : ""
-        )
-        .on("input", function () {
-          var v = jQuery.trim(jQuery(this).val());
-          if (v) {
-            _selectedIcon = v;
-            $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            _updatePreview(v);
-          }
+      function _updatePreview(val) {
+        $iconPreview.empty();
+        if (!val) { $iconPreview.text("?"); return; }
+        if (val.indexOf("fa-") !== -1) {
+          $iconPreview.append(jQuery("<i>").addClass(val));
+        } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
+          $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
+        } else {
+          $iconPreview.text(val);
+        }
+      }
+      _updatePreview(_selectedIcon);
+      $iconField.append($iconPreview);
+
+      if (icons.length) {
+        var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
+        jQuery.each(icons, function (_, ico) {
+          var $btn = jQuery("<button>")
+            .addClass("tl-icon-picker-btn" + (layer.icon === ico.value ? " tl-icon-picker-btn--active" : ""))
+            .attr({ title: ico.label || "", type: "button" })
+            .on("click", function () {
+              _selectedIcon = ico.value;
+              $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              jQuery(this).addClass("tl-icon-picker-btn--active");
+              if ($textInput) $textInput.val("");
+              _updatePreview(_selectedIcon);
+            });
+          if (ico.type === "fa") { $btn.append(jQuery("<i>").addClass(ico.value)); }
+          else if (ico.type === "svg" || ico.type === "img") { $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img")); }
+          else { $btn.text(ico.value); }
+          $grid.append($btn);
         });
-      $textRow.append($textInput);
-      $iconField.append($textRow);
+        $iconField.append($grid);
+      }
+
+      if (allowText) {
+        var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
+        $textInput = jQuery("<input>")
+          .addClass("tl-icon-picker-text-input")
+          .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
+          .val(
+            _selectedIcon && _selectedIcon.indexOf("fa-") === -1 && !/\.(svg|png|jpe?g|gif|webp)/i.test(_selectedIcon)
+              ? _selectedIcon : ""
+          )
+          .on("input", function () {
+            var v = jQuery.trim(jQuery(this).val());
+            if (v) {
+              _selectedIcon = v;
+              $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              _updatePreview(v);
+            }
+          });
+        $textRow.append($textInput);
+        $iconField.append($textRow);
+      }
     }
 
     var $actions = jQuery("<div>").addClass("tl-modal-actions");
@@ -594,17 +536,20 @@ var GridToolbar = (function () {
         if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
         $nameInput.removeClass("tl-input-error");
         $overlay.remove();
-        GridCore.updateLayerMeta(layer.id, {
-          label: labelVal,
-          icon: _selectedIcon || labelVal.charAt(0).toUpperCase()
-        });
+        var props = { label: labelVal };
+        if (showIcons) props.icon = _selectedIcon || labelVal.charAt(0).toUpperCase();
+        GridCore.updateLayerMeta(layer.id, props);
       });
 
     $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
     $nameInput.on("keydown", function (e) { if (e.key === "Enter") $save.trigger("click"); });
 
     $actions.append($cancel, $save);
-    $modal.append($nameField, $iconField, $actions);
+    if (showIcons) {
+      $modal.append($nameField, $iconField, $actions);
+    } else {
+      $modal.append($nameField, $actions);
+    }
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
     $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
@@ -616,6 +561,7 @@ var GridToolbar = (function () {
   function _openEditRoomModal(room) {
     var cfg = GridCore.getConfig();
     var cid = _TL.cid();
+    var showIcons = cfg.showIcons !== false;
     var pickerCfg = cfg.iconPicker || {};
     var icons = pickerCfg.icons || [];
     var maxText = pickerCfg.maxTextLength || 4;
@@ -634,66 +580,69 @@ var GridToolbar = (function () {
     var $nameInput = jQuery("<input>").attr({ type: "text", placeholder: "Room name", maxlength: 30 }).val(room.label);
     $nameField.append($nameInput);
 
-    var $iconField = jQuery("<div>").addClass("tl-field");
-    $iconField.append(jQuery("<label>").text("Icon"));
-    var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
-
-    function _updatePreview(val) {
-      $iconPreview.empty();
-      if (!val) { $iconPreview.text("?"); return; }
-      if (val.indexOf("fa-") !== -1) {
-        $iconPreview.append(jQuery("<i>").addClass(val));
-      } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
-        $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
-      } else {
-        $iconPreview.text(val);
-      }
-    }
-    _updatePreview(_selectedIcon);
-    $iconField.append($iconPreview);
-
+    var $iconField = null;
     var $textInput = null;
 
-    if (icons.length) {
-      var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
-      jQuery.each(icons, function (_, ico) {
-        var $btn = jQuery("<button>")
-          .addClass("tl-icon-picker-btn" + (room.icon === ico.value ? " tl-icon-picker-btn--active" : ""))
-          .attr({ title: ico.label || "", type: "button" })
-          .on("click", function () {
-            _selectedIcon = ico.value;
-            $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            jQuery(this).addClass("tl-icon-picker-btn--active");
-            if ($textInput) $textInput.val("");
-            _updatePreview(_selectedIcon);
-          });
-        if (ico.type === "fa") { $btn.append(jQuery("<i>").addClass(ico.value)); }
-        else if (ico.type === "svg" || ico.type === "img") { $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img")); }
-        else { $btn.text(ico.value); }
-        $grid.append($btn);
-      });
-      $iconField.append($grid);
-    }
+    if (showIcons) {
+      $iconField = jQuery("<div>").addClass("tl-field");
+      $iconField.append(jQuery("<label>").text("Icon"));
+      var $iconPreview = jQuery("<div>").addClass("tl-modal-icon-preview");
 
-    if (allowText) {
-      var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
-      $textInput = jQuery("<input>")
-        .addClass("tl-icon-picker-text-input")
-        .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
-        .val(
-          _selectedIcon && _selectedIcon.indexOf("fa-") === -1 && !/\.(svg|png|jpe?g|gif|webp)/i.test(_selectedIcon)
-            ? _selectedIcon : ""
-        )
-        .on("input", function () {
-          var v = jQuery.trim(jQuery(this).val());
-          if (v) {
-            _selectedIcon = v;
-            $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
-            _updatePreview(v);
-          }
+      function _updatePreview(val) {
+        $iconPreview.empty();
+        if (!val) { $iconPreview.text("?"); return; }
+        if (val.indexOf("fa-") !== -1) {
+          $iconPreview.append(jQuery("<i>").addClass(val));
+        } else if (/\.(svg|png|jpe?g|gif|webp)/i.test(val)) {
+          $iconPreview.append(jQuery("<img>").attr("src", val).css({ width: "22px", height: "22px", "object-fit": "contain" }));
+        } else {
+          $iconPreview.text(val);
+        }
+      }
+      _updatePreview(_selectedIcon);
+      $iconField.append($iconPreview);
+
+      if (icons.length) {
+        var $grid = jQuery("<div>").addClass("tl-modal-icon-grid");
+        jQuery.each(icons, function (_, ico) {
+          var $btn = jQuery("<button>")
+            .addClass("tl-icon-picker-btn" + (room.icon === ico.value ? " tl-icon-picker-btn--active" : ""))
+            .attr({ title: ico.label || "", type: "button" })
+            .on("click", function () {
+              _selectedIcon = ico.value;
+              $grid.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              jQuery(this).addClass("tl-icon-picker-btn--active");
+              if ($textInput) $textInput.val("");
+              _updatePreview(_selectedIcon);
+            });
+          if (ico.type === "fa") { $btn.append(jQuery("<i>").addClass(ico.value)); }
+          else if (ico.type === "svg" || ico.type === "img") { $btn.append(jQuery("<img>").attr("src", ico.value).addClass("tl-icon-picker-img")); }
+          else { $btn.text(ico.value); }
+          $grid.append($btn);
         });
-      $textRow.append($textInput);
-      $iconField.append($textRow);
+        $iconField.append($grid);
+      }
+
+      if (allowText) {
+        var $textRow = jQuery("<div>").addClass("tl-icon-picker-text-row").css("margin-top", "8px");
+        $textInput = jQuery("<input>")
+          .addClass("tl-icon-picker-text-input")
+          .attr({ type: "text", maxlength: maxText, placeholder: "Or type: A, 1F…" })
+          .val(
+            _selectedIcon && _selectedIcon.indexOf("fa-") === -1 && !/\.(svg|png|jpe?g|gif|webp)/i.test(_selectedIcon)
+              ? _selectedIcon : ""
+          )
+          .on("input", function () {
+            var v = jQuery.trim(jQuery(this).val());
+            if (v) {
+              _selectedIcon = v;
+              $iconField.find(".tl-icon-picker-btn").removeClass("tl-icon-picker-btn--active");
+              _updatePreview(v);
+            }
+          });
+        $textRow.append($textInput);
+        $iconField.append($textRow);
+      }
     }
 
     var $actions = jQuery("<div>").addClass("tl-modal-actions");
@@ -706,18 +655,31 @@ var GridToolbar = (function () {
         if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
         $nameInput.removeClass("tl-input-error");
         $overlay.remove();
-        GridCore.updateRoomMeta(room.id, {
-          label: labelVal,
-          icon: _selectedIcon || labelVal.charAt(0).toUpperCase()
-        });
+        var props = { label: labelVal };
+        if (showIcons) props.icon = _selectedIcon || labelVal.charAt(0).toUpperCase();
+        GridCore.updateRoomMeta(room.id, props);
         _refreshRoomDisplay(GridCore.getActiveRoom());
+        if (typeof cfg.onUpdateRoom === "function") {
+          var editLayer = GridCore.getActiveLayer();
+          var editRoom  = GridCore.getActiveRoom();
+          cfg.onUpdateRoom({
+            mapId:   cfg.mapId !== undefined ? cfg.mapId : null,
+            floorId: editLayer ? editLayer.id : null,
+            id:      editRoom  ? editRoom.id  : room.id,
+            label:   editRoom  ? editRoom.label : labelVal,
+          });
+        }
       });
 
     $nameInput.on("input", function () { jQuery(this).removeClass("tl-input-error"); });
     $nameInput.on("keydown", function (e) { if (e.key === "Enter") $save.trigger("click"); });
 
     $actions.append($cancel, $save);
-    $modal.append($nameField, $iconField, $actions);
+    if (showIcons) {
+      $modal.append($nameField, $iconField, $actions);
+    } else {
+      $modal.append($nameField, $actions);
+    }
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
     $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
@@ -738,6 +700,10 @@ var GridToolbar = (function () {
   function _handleSave() {
     deactivate();
     GridMultiSelect.deactivate();
+
+    var cfg = GridCore.getConfig();
+    var snapshotTables = GridCore.getSnapshotTables() || [];
+
     GridCore.saveEdit();
     _renderEditControls();
     GridLayers.renderTabs();
@@ -746,8 +712,63 @@ var GridToolbar = (function () {
     var cid = _TL.cid();
     jQuery("#" + cid).removeClass("tl-edit-mode").addClass("tl-view-mode");
     _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
-    var cfg = GridCore.getConfig();
-    if (typeof cfg.onLayoutChange === "function") cfg.onLayoutChange(GridCore.getLayout());
+
+    if (typeof cfg.onLayoutChange === "function") {
+      var currentTables = GridCore.getLayout();
+      var snapshotMap = {};
+      snapshotTables.forEach(function (t) { snapshotMap[t.id] = t; });
+
+      var currentMap = {};
+      currentTables.forEach(function (t) { currentMap[t.id] = t; });
+
+      var changed = currentTables.filter(function (t) {
+        var orig = snapshotMap[t.id];
+        if (!orig) return true;
+        return t.col !== orig.col || t.row !== orig.row ||
+               t.colSpan !== orig.colSpan || t.rowSpan !== orig.rowSpan ||
+               t.name !== orig.name || t.seats !== orig.seats ||
+               t.status !== orig.status || t.shape !== orig.shape;
+      });
+
+      var deleted = snapshotTables.filter(function (t) {
+        return !currentMap[t.id];
+      });
+
+      var activeLayer = GridCore.getActiveLayer();
+      var activeRoom  = GridCore.getActiveRoom();
+      cfg.onLayoutChange({
+        mapId:   cfg.mapId   !== undefined ? cfg.mapId   : null,
+        floorId: activeLayer ? activeLayer.id : null,
+        roomId:  activeRoom  ? activeRoom.id  : null,
+        tables: changed.map(function (t) {
+          return {
+            id:      t.id,
+            name:    t.name,
+            seats:   t.seats,
+            status:  t.status,
+            shape:   t.shape,
+            col:     t.col,
+            row:     t.row,
+            colSpan: t.colSpan,
+            rowSpan: t.rowSpan,
+          };
+        }).concat(deleted.map(function (t) {
+          return {
+            id:      t.id,
+            name:    t.name,
+            seats:   t.seats,
+            status:  t.status,
+            shape:   t.shape,
+            col:     t.col,
+            row:     t.row,
+            colSpan: t.colSpan,
+            rowSpan: t.rowSpan,
+            deleted: true,
+          };
+        })),
+      });
+    }
+
     if (typeof cfg.onRoomChange === "function")
       cfg.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
   }
@@ -770,7 +791,6 @@ var GridToolbar = (function () {
   function _setEditableState(editable) {
     var ctx = _c();
     if (ctx.$layoutIcon) ctx.$layoutIcon.toggleClass("tl-toolbar-icon-badge--editable", editable);
-    if (ctx.$layoutName) ctx.$layoutName.toggleClass("tl-toolbar-layout-name--editable", editable);
   }
 
   // ── Shape panel ───────────────────────────────────

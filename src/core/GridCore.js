@@ -364,6 +364,12 @@ var GridCore = (function () {
     });
   }
 
+  function getSnapshotTables() {
+    var c = _c();
+    if (!c || !c.snapshot) return null;
+    return jQuery.extend(true, [], c.snapshot.tables);
+  }
+
   // ── Collision ─────────────────────────────────────
 
   function hasCollision(col, row, colSpan, rowSpan, excludeId) {
@@ -468,6 +474,7 @@ var GridCore = (function () {
     getConfig: getConfig,
     getTables: getTables,
     getLayout: getLayout,
+    getSnapshotTables: getSnapshotTables,
     getCounter: getCounter,
     bumpCounter: bumpCounter,
     tableById: tableById,

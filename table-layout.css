@@ -2262,6 +2262,15 @@
     visibility: visible;
 }
 
+/* Hide floor/room add+close controls while table-grid edit is active */
+.tl-mode-edit.tl-edit-mode .tl-tab-add,
+.tl-mode-edit.tl-edit-mode .tl-tab-close,
+.tl-mode-edit.tl-edit-mode .tl-room-tab-add,
+.tl-mode-edit.tl-edit-mode .tl-room-tab-close,
+.tl-mode-edit.tl-edit-mode .tl-rooms-add-submit {
+    display: none;
+}
+
 /* ── Grid line visibility toggle ── */
 
 .tl-no-grid-lines .tl-canvas {
