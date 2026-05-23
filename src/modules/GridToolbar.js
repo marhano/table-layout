@@ -250,15 +250,38 @@ var GridToolbar = (function () {
       .on("click", function () {
         $overlay.remove();
         _TL.use(cid);
+        var c = GridCore.getConfig();
+        var activeLayer = GridCore.getActiveLayer();
+        var originalIdx = activeLayer
+          ? activeLayer.rooms.findIndex(function (r) { return r.id === room.id; })
+          : -1;
         var wasActive = (room.id === GridCore.getActiveRoomId());
         GridCore.deleteRoom(room.id);
         if (wasActive) {
           _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
         }
         _refreshRoomDisplay(GridCore.getActiveRoom());
-        var c = GridCore.getConfig();
         if (typeof c.onRoomChange === "function")
           c.onRoomChange(GridCore.getActiveRoom(), GridCore.getLayout());
+        if (typeof c.onDeleteRoom === "function") {
+          var rollback = function () {
+            _TL.use(cid);
+            var layer = GridCore.getActiveLayer();
+            if (!layer) return;
+            layer.rooms.splice(originalIdx >= 0 ? originalIdx : layer.rooms.length, 0, room);
+            GridEvents.emit("room:added", room);
+            if (wasActive) {
+              GridCore.switchRoom(room.id);
+              _TL.$(".tl-zoom-area").empty().append(GridRender.buildGrid());
+            }
+            _refreshRoomDisplay(GridCore.getActiveRoom());
+          };
+          var deletedLayer = GridCore.getActiveLayer();
+          var callbackRoom = jQuery.extend(true, {}, room);
+          if (c.mapId !== undefined) callbackRoom.mapId = c.mapId;
+          callbackRoom.floorId = deletedLayer ? deletedLayer.id : null;
+          c.onDeleteRoom(callbackRoom, rollback);
+        }
       });
     $actions.append($cancel, $confirm);
     $modal.append($actions);
@@ -268,6 +291,8 @@ var GridToolbar = (function () {
   }
 
   function _selectIcon(room, value) {
+    var origIcon = room.icon;
+    var cid = _TL.cid();
     GridCore.updateRoomMeta(room.id, { icon: value });
     var cfg = GridCore.getConfig();
     var ctx = _c();
@@ -276,18 +301,25 @@ var GridToolbar = (function () {
     if (typeof cfg.onUpdateRoom === "function") {
       var iconLayer = GridCore.getActiveLayer();
       var iconRoom  = GridCore.getActiveRoom();
+      var rollback = function () {
+        _TL.use(cid);
+        GridCore.updateRoomMeta(room.id, { icon: origIcon });
+        var reverted = GridCore.getActiveRoom();
+        var ctx2 = _c();
+        if (ctx2 && ctx2.$layoutIcon && reverted)
+          _renderIconContent(ctx2.$layoutIcon, reverted.icon, reverted.label);
+      };
       cfg.onUpdateRoom({
         mapId:   cfg.mapId !== undefined ? cfg.mapId : null,
         floorId: iconLayer ? iconLayer.id : null,
         id:      iconRoom  ? iconRoom.id  : room.id,
         label:   iconRoom  ? iconRoom.label : room.label,
-      });
+      }, rollback);
     }
     var updated = GridCore.getActiveRoom();
     ctx.$layoutIcon.find(".tl-icon-picker").detach();
     _renderIconContent(ctx.$layoutIcon, updated.icon, updated.label);
     _closeIconPicker();
-    var cid = _TL.cid();
     ctx.$layoutIcon.off("click").on("click", function (e) {
       e.stopPropagation();
       _TL.use(cid);
@@ -655,6 +687,8 @@ var GridToolbar = (function () {
         if (!labelVal) { $nameInput.addClass("tl-input-error").trigger("focus"); return; }
         $nameInput.removeClass("tl-input-error");
         $overlay.remove();
+        var origLabel = room.label;
+        var origIcon  = room.icon;
         var props = { label: labelVal };
         if (showIcons) props.icon = _selectedIcon || labelVal.charAt(0).toUpperCase();
         GridCore.updateRoomMeta(room.id, props);
@@ -662,12 +696,17 @@ var GridToolbar = (function () {
         if (typeof cfg.onUpdateRoom === "function") {
           var editLayer = GridCore.getActiveLayer();
           var editRoom  = GridCore.getActiveRoom();
+          var rollback = function () {
+            _TL.use(cid);
+            GridCore.updateRoomMeta(room.id, { label: origLabel, icon: origIcon });
+            _refreshRoomDisplay(GridCore.getActiveRoom());
+          };
           cfg.onUpdateRoom({
             mapId:   cfg.mapId !== undefined ? cfg.mapId : null,
             floorId: editLayer ? editLayer.id : null,
             id:      editRoom  ? editRoom.id  : room.id,
             label:   editRoom  ? editRoom.label : labelVal,
-          });
+          }, rollback);
         }
       });
 

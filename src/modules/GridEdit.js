@@ -20,59 +20,40 @@ var GridEdit = (function () {
     var currentShape = table.shape || "square";
     var statusColor = cfg.statusColors[table.status] || "#6b7280";
     var styles = GridCore.getShapeStyles(currentShape);
-
-    // ── Table source (same pattern as GridPlace._showModal) ──
     var defaultTables = [];
-    var tablesLoading = false;
-    var $tablesWrap = jQuery('<div>').css({ position: 'relative', display: 'block', width: '100%' });
-    var $search = jQuery('<input type="text" placeholder="Search tables...">').css({ width: '100%', marginBottom: '4px', boxSizing: 'border-box' });
-    var $select = jQuery('<select>').css({ width: '100%' });
-    var $spinner = jQuery('<span class="tl-spinner"></span>').css({
-      display: 'none', position: 'absolute', right: '10px', top: '8px',
-      width: '18px', height: '18px', 'z-index': 2
-    });
-    $tablesWrap.append($search, $select, $spinner);
 
-    function updateTableOptions(tables) {
-      $select.empty();
-      var filter = $search.val() ? $search.val().toLowerCase() : '';
-      // Add current table as first option
-      $select.append(
-        jQuery('<option>').val('__current__')
-          .text(table.name + " (" + table.seats + " seats) — current")
-      );
-      tables.filter(function (t) {
-        return !filter || t.TableName.toLowerCase().includes(filter);
-      }).forEach(function (t, i) {
-        // Skip tables already in any room (except current table)
+    // ── Table combobox ─────────────────────────────
+    var initialItem = {
+      value: '__current__',
+      label: table.name + ' (' + table.seats + ' seat' + (table.seats !== 1 ? 's' : '') + ') — current',
+    };
+    var combobox = _buildTableCombobox(cid, 'Select a table', initialItem);
+
+    function _buildItems(tables) {
+      var allLayers = GridCore.getAllLayersLayout();
+      var result = [];
+      tables.forEach(function (t, i) {
         if (t.TableId === table.id) return;
-        var allLayers = GridCore.getAllLayersLayout();
-        if (allLayers.some(function (layer) {
+        if (allLayers && allLayers.some(function (layer) {
           return layer.rooms.some(function (room) {
             return room.tables.some(function (tbl) { return tbl.id === t.TableId; });
           });
         })) return;
-        $select.append(
-          jQuery('<option>').val(i).text(t.TableName + " (" + t.Capacity + " seats)")
-        );
+        result.push({ value: i, label: t.TableName + ' (' + t.Capacity + ' seats)' });
       });
-      if (tablesLoading) { $spinner.show(); } else { $spinner.hide(); }
+      return result;
     }
 
-    $search.on('input', function () { updateTableOptions(defaultTables); });
-
     if (typeof cfg.newTable.tables === 'function') {
-      tablesLoading = true;
-      updateTableOptions([]);
-      $spinner.show();
+      combobox.setLoading(true);
       Promise.resolve(cfg.newTable.tables()).then(function (result) {
-        tablesLoading = false;
         defaultTables = result || [];
-        updateTableOptions(defaultTables);
+        combobox.setLoading(false);
+        combobox.setItems(_buildItems(defaultTables));
       });
     } else if (Array.isArray(cfg.newTable.tables)) {
       defaultTables = cfg.newTable.tables;
-      updateTableOptions(defaultTables);
+      combobox.setItems(_buildItems(defaultTables));
     }
 
     // ── Shape selector ──
@@ -87,7 +68,6 @@ var GridEdit = (function () {
           $shapeWrap.find('.tl-edit-shape-btn--active').removeClass('tl-edit-shape-btn--active');
           jQuery(this).addClass('tl-edit-shape-btn--active');
           currentShape = key;
-          // Update preview
           var newStyles = GridCore.getShapeStyles(key);
           $modal.find('.tl-modal-preview').css({
             'clip-path': newStyles.clipPath,
@@ -102,21 +82,14 @@ var GridEdit = (function () {
     var $modal = jQuery('<div>').addClass('tl-modal');
 
     $modal.append(
-      jQuery('<h2>').append(
-        jQuery('<span>').addClass('tl-modal-preview').css({
-          background: statusColor,
-          'clip-path': styles.clipPath,
-          'border-radius': styles.borderRadius
-        }),
-        jQuery('<span>').text('Edit Table')
-      )
+      jQuery('<h2>')
+        .append(jQuery('<i>').addClass('fa-solid fa-pen-to-square'))
+        .append(' ')
+        .append(jQuery('<span>').text(table.name))
     );
 
-    // Shape field
     $modal.append(_field('Shape', $shapeWrap));
-
-    // Table select field
-    $modal.append(_field('Change table', $tablesWrap));
+    $modal.append(_field('Change table', combobox.$el));
 
     var $err = jQuery('<p>').addClass('tl-error').text('Error saving changes.');
     $modal.append($err);
@@ -132,15 +105,21 @@ var GridEdit = (function () {
       .on('click', function () {
         _TL.use(cid);
         $err.hide();
-        var selectedVal = $select.val();
+
+        var selected = combobox.getValue();
+        if (combobox.isLoading() && (!selected || selected.value === '__current__')) {
+          $err.text('Table options are still loading, please wait.').show();
+          return;
+        }
+
         var props = { shape: currentShape };
 
-        if (selectedVal !== '__current__') {
-          var selTable = defaultTables[parseInt(selectedVal, 10)];
+        if (selected && selected.value !== '__current__') {
+          var selTable = defaultTables[parseInt(selected.value, 10)];
           if (selTable) {
-            props.id = selTable.TableId;
-            props.name = selTable.TableName;
-            props.seats = parseInt(selTable.Capacity, 10) || table.seats;
+            props.id     = selTable.TableId;
+            props.name   = selTable.TableName;
+            props.seats  = parseInt(selTable.Capacity, 10) || table.seats;
             props.status = selTable.Status ? selTable.Status.toLowerCase() : table.status;
           }
         }
@@ -189,6 +168,128 @@ var GridEdit = (function () {
   function _field(label, $input) {
     return jQuery('<div>').addClass('tl-field')
       .append(jQuery('<label>').text(label), $input);
+  }
+
+  // ── Searchable combobox ───────────────────────────
+  function _buildTableCombobox(cid, placeholder, initialItem) {
+    var _items = [];
+    var _selected = initialItem || null;
+    var _loading = false;
+    var _isOpen = false;
+    var _filter = '';
+    var _uid = cid + '-tcb-' + Date.now();
+
+    var $wrap     = jQuery('<div>').addClass('tl-combobox');
+    var $trigText = jQuery('<span>').addClass('tl-combobox-trigger-text');
+    var $trigChev = jQuery('<span>').addClass('tl-combobox-trigger-chevron')
+                      .html('<i class="fa-solid fa-chevron-down"></i>');
+    var $trigger  = jQuery('<div>').addClass('tl-combobox-trigger').append($trigText, $trigChev);
+
+    var $searchInput = jQuery('<input>').attr({ type: 'text', placeholder: 'Filter...' })
+                         .addClass('tl-combobox-search');
+    var $searchWrap  = jQuery('<div>').addClass('tl-combobox-search-wrap').append($searchInput);
+    var $list        = jQuery('<div>').addClass('tl-combobox-list');
+    var $panel       = jQuery('<div>').addClass('tl-combobox-panel').append($searchWrap, $list);
+
+    $wrap.append($trigger, $panel);
+
+    function _updateTrigger() {
+      if (_loading && !_selected) {
+        $trigText.text('Loading options...')
+                 .addClass('tl-combobox-trigger-text--placeholder');
+      } else if (_selected) {
+        $trigText.text(_selected.label)
+                 .removeClass('tl-combobox-trigger-text--placeholder');
+      } else {
+        $trigText.text(placeholder)
+                 .addClass('tl-combobox-trigger-text--placeholder');
+      }
+    }
+
+    function _renderList() {
+      $list.empty();
+      if (_loading && _items.length === 0) {
+        $list.append(
+          jQuery('<div>').addClass('tl-combobox-status').append(
+            jQuery('<span>').addClass('tl-spinner'),
+            jQuery('<span>').text(' Loading...')
+          )
+        );
+        return;
+      }
+      // include initialItem at top if it's not in _items
+      var all = (_selected && !_items.some(function (it) { return it.value === _selected.value; }))
+        ? [_selected].concat(_items)
+        : _items;
+      var filterLower = _filter.toLowerCase();
+      var shown = filterLower
+        ? all.filter(function (it) { return it.label.toLowerCase().indexOf(filterLower) !== -1; })
+        : all;
+      if (shown.length === 0) {
+        $list.append(
+          jQuery('<div>').addClass('tl-combobox-status').text('No options found')
+        );
+        return;
+      }
+      jQuery.each(shown, function (_, item) {
+        var isSel = _selected && _selected.value === item.value;
+        var $opt = jQuery('<div>')
+          .addClass('tl-combobox-option' + (isSel ? ' tl-combobox-option--selected' : ''));
+        $opt.append(jQuery('<span>').addClass('tl-combobox-option-label').text(item.label));
+        if (isSel) {
+          $opt.append(
+            jQuery('<span>').addClass('tl-combobox-option-check')
+                            .html('<i class="fa-solid fa-check"></i>')
+          );
+        }
+        $opt.on('click', function () {
+          _selected = item;
+          _closeDropdown();
+          _updateTrigger();
+        });
+        $list.append($opt);
+      });
+    }
+
+    function _openDropdown() {
+      if (_isOpen) return;
+      _isOpen = true;
+      $wrap.addClass('tl-combobox--open');
+      _renderList();
+      setTimeout(function () { $searchInput.trigger('focus'); }, 20);
+      jQuery(document).on('mousedown.' + _uid, function (e) {
+        if (!$wrap.is(e.target) && !$wrap.find(e.target).length) _closeDropdown();
+      });
+    }
+
+    function _closeDropdown() {
+      if (!_isOpen) return;
+      _isOpen = false;
+      $wrap.removeClass('tl-combobox--open');
+      $searchInput.val('');
+      _filter = '';
+      jQuery(document).off('.' + _uid);
+    }
+
+    $trigger.on('click', function (e) {
+      e.stopPropagation();
+      if (_isOpen) { _closeDropdown(); } else { _openDropdown(); }
+    });
+
+    $searchInput.on('input', function () {
+      _filter = jQuery(this).val();
+      _renderList();
+    });
+
+    _updateTrigger();
+
+    return {
+      $el:        $wrap,
+      getValue:   function () { return _selected; },
+      isLoading:  function () { return _loading; },
+      setItems:   function (items) { _items = items; if (_isOpen) _renderList(); },
+      setLoading: function (val) { _loading = val; _updateTrigger(); if (_isOpen) _renderList(); },
+    };
   }
 
   function unbind() {
