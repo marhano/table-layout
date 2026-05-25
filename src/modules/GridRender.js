@@ -17,7 +17,7 @@ var GridRender = (function () {
     var $canvas = jQuery("<div>")
       .addClass(ns("canvas"))
       .css({
-        height: cfg.theme.canvasHeight || "600px",
+        height: cfg.theme.canvasHeight || "calc(100vh - 52px)",
         "--tl-cell-size": cfg.cellSize + cfg.gap + "px",
         background: cfg.theme.gridBg,
       });

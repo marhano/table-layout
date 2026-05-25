@@ -42,7 +42,7 @@ var GridConfig = (function () {
       zoomBtnColor: "#334155",
       zoomBtnHover: "#e2e8f0",
       // Canvas
-      canvasHeight: "600px",
+      canvasHeight: "calc(100vh - 52px)",
       gridBg: "#ffffff",
       cellBg: "#fbfbfb",
     },

@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-05-23T19:05:48.303Z
+ * Built: 2026-05-24T12:26:35.467Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -83,7 +83,7 @@ var GridConfig = (function () {
       zoomBtnColor: "#334155",
       zoomBtnHover: "#e2e8f0",
       // Canvas
-      canvasHeight: "600px",
+      canvasHeight: "calc(100vh - 52px)",
       gridBg: "#ffffff",
       cellBg: "#fbfbfb",
     },
@@ -849,7 +849,7 @@ var GridRender = (function () {
     var $canvas = jQuery("<div>")
       .addClass(ns("canvas"))
       .css({
-        height: cfg.theme.canvasHeight || "600px",
+        height: cfg.theme.canvasHeight || "calc(100vh - 52px)",
         "--tl-cell-size": cfg.cellSize + cfg.gap + "px",
         background: cfg.theme.gridBg,
       });
