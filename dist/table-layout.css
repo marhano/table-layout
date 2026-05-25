@@ -1637,17 +1637,61 @@
 
 .tl-help-header {
     display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--tl-border);
+    flex-shrink: 0;
+}
+
+.tl-help-header-top {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 20px 28px 16px;
-    border-bottom: 1px solid var(--tl-border);
-    flex-shrink: 0;
 }
 
 .tl-help-title-row {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+/* ── Help Mode Tabs ── */
+.tl-help-mode-tabs {
+    display: flex;
+    border-top: 1px solid var(--tl-border);
+}
+
+.tl-help-mode-tab {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--tl-surface-muted);
+    background: var(--tl-surface-bright);
+    border: none;
+    border-right: 1px solid var(--tl-border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.tl-help-mode-tab:last-child {
+    border-right: none;
+}
+
+.tl-help-mode-tab:hover {
+    background: var(--tl-surface-bright);
+    color: var(--tl-surface-alt);
+}
+
+.tl-help-mode-tab--active {
+    background: #ffffff;
+    color: var(--tl-primary);
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--tl-primary);
 }
 
 .tl-help-title-row h2 {
