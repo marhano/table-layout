@@ -99,6 +99,18 @@ var GridEdit = (function () {
       .text('Cancel')
       .on('click', function () { $overlay.remove(); });
 
+    var $delete = jQuery('<button>')
+      .addClass('tl-btn tl-btn-danger')
+      .html('<i class="fa-solid fa-trash-can"></i> Delete')
+      .on('click', function () {
+        _TL.use(cid);
+        _TL.$('[data-table-id="' + table.id + '"]').remove();
+        GridCore.removeTable(table.id);
+        if (typeof cfg.onLayoutChange === 'function' && !(cfg.realTime === false && GridCore.isEditing()))
+          cfg.onLayoutChange(GridCore.getLayout());
+        $overlay.remove();
+      });
+
     var $save = jQuery('<button>')
       .addClass('tl-btn tl-btn-primary')
       .text('Save')
@@ -155,7 +167,10 @@ var GridEdit = (function () {
       });
 
     $modal.append(
-      jQuery('<div>').addClass('tl-modal-actions').append($cancel, $save)
+      jQuery('<div>').addClass('tl-modal-actions').append(
+        $delete,
+        jQuery('<div>').addClass('tl-modal-actions-right').append($cancel, $save)
+      )
     );
     $overlay.append($modal);
     jQuery('#' + cid).append($overlay);
