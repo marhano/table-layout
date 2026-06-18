@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-06-01T08:29:58.119Z
+ * Built: 2026-06-18T01:15:59.782Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -2734,7 +2734,13 @@ var GridDrag = (function () {
       touchMoved: false,
       touchTimer: null,
       touchReady: false,
-      dragTouchMoveHandler: null
+      dragTouchMoveHandler: null,
+      _rafId: null,
+      _lastCol: null,
+      _lastRow: null,
+      _touchRafId: null,
+      _lastTouchCol: null,
+      _lastTouchRow: null,
     };
   }
 
@@ -2743,6 +2749,8 @@ var GridDrag = (function () {
     var ctx = _inst[cid];
     if (ctx) {
       clearTimeout(ctx.touchTimer);
+      if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); }
+      if (ctx._touchRafId) { cancelAnimationFrame(ctx._touchRafId); }
       if (ctx.dragTouchMoveHandler) {
         document.removeEventListener("touchmove", ctx.dragTouchMoveHandler);
       }
@@ -2769,6 +2777,8 @@ var GridDrag = (function () {
         if (GridToolbar.getActive()) return;
         if (GridMultiSelect.isActive()) return;
         ctx.dragId = jQuery(this).data("table-id");
+        ctx._lastCol = null;
+        ctx._lastRow = null;
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", String(ctx.dragId));
 
@@ -2785,6 +2795,7 @@ var GridDrag = (function () {
     jQuery(document).on("dragend.tl-drag-" + cid, function () {
       _TL.use(cid);
       var ctx = _c();
+      if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); ctx._rafId = null; }
       if (ctx.dragId) {
         _TL.$('[data-table-id="' + ctx.dragId + '"]').css("opacity", "");
         ctx.dragId = null;
@@ -2808,6 +2819,8 @@ var GridDrag = (function () {
       ctx.touchStartPos = { x: touch.clientX, y: touch.clientY };
       ctx.touchMoved = false;
       ctx.touchReady = false;
+      ctx._lastTouchCol = null;
+      ctx._lastTouchRow = null;
 
       clearTimeout(ctx.touchTimer);
       ctx.touchTimer = setTimeout(function () {
@@ -2841,22 +2854,35 @@ var GridDrag = (function () {
 
         te.preventDefault();
         ctx2.touchMoved = true;
-        var t = GridCore.tableById(ctx2.touchDragId);
-        if (!t) return;
-        var pos = GridCore.cursorToGrid(tc.clientX, tc.clientY);
-        var bad = GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id);
-        _showGhost(pos.col, pos.row, t.colSpan, t.rowSpan, bad);
 
-        var cfg2 = GridCore.getConfig();
-        if (cfg2.trashZone) {
-          var trashEl = jQuery(trashSel)[0];
-          if (trashEl) {
-            var trashRect = trashEl.getBoundingClientRect();
-            var overTrash = tc.clientX >= trashRect.left && tc.clientX <= trashRect.right &&
-                            tc.clientY >= trashRect.top && tc.clientY <= trashRect.bottom;
-            jQuery(trashSel).toggleClass("tl-trash-zone--active", overTrash);
+        var clientX = tc.clientX;
+        var clientY = tc.clientY;
+
+        if (ctx2._touchRafId) return;
+        ctx2._touchRafId = requestAnimationFrame(function () {
+          _TL.use(cid);
+          var ctx3 = _c();
+          ctx3._touchRafId = null;
+          if (!ctx3.touchDragId) return;
+          var t = GridCore.tableById(ctx3.touchDragId);
+          if (!t) return;
+          var pos = GridCore.cursorToGrid(clientX, clientY);
+          if (ctx3._lastTouchCol === pos.col && ctx3._lastTouchRow === pos.row) return;
+          ctx3._lastTouchCol = pos.col;
+          ctx3._lastTouchRow = pos.row;
+          var bad = GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id);
+          _showGhost(pos.col, pos.row, t.colSpan, t.rowSpan, bad);
+          var cfg2 = GridCore.getConfig();
+          if (cfg2.trashZone) {
+            var trashEl = jQuery(trashSel)[0];
+            if (trashEl) {
+              var trashRect = trashEl.getBoundingClientRect();
+              var overTrash = clientX >= trashRect.left && clientX <= trashRect.right &&
+                              clientY >= trashRect.top  && clientY <= trashRect.bottom;
+              jQuery(trashSel).toggleClass("tl-trash-zone--active", overTrash);
+            }
           }
-        }
+        });
       };
       document.addEventListener("touchmove", ctx.dragTouchMoveHandler, { passive: false });
     });
@@ -2865,6 +2891,7 @@ var GridDrag = (function () {
       _TL.use(cid);
       var ctx = _c();
       clearTimeout(ctx.touchTimer);
+      if (ctx._touchRafId) { cancelAnimationFrame(ctx._touchRafId); ctx._touchRafId = null; }
       if (ctx.dragTouchMoveHandler) {
         document.removeEventListener("touchmove", ctx.dragTouchMoveHandler);
         ctx.dragTouchMoveHandler = null;
@@ -2953,27 +2980,31 @@ var GridDrag = (function () {
     });
 
     jQuery(document).on("dragover.tl-drag-" + cid, gridSel, function (e) {
-      e.preventDefault();
+      e.preventDefault(); // must remain synchronous for drop to work
       _TL.use(cid);
       var ctx = _c();
       if (!ctx.dragId) return;
-      var t = GridCore.tableById(ctx.dragId);
-      if (!t) return;
-      var pos = GridCore.cursorToGrid(
-        e.originalEvent.clientX,
-        e.originalEvent.clientY,
-      );
-      GridRender.maybeExpand(pos.col + t.colSpan - 1, pos.row + t.rowSpan - 1);
-      _autoScroll(e.originalEvent.clientX, e.originalEvent.clientY);
-      var bad = GridCore.hasCollision(
-        pos.col,
-        pos.row,
-        t.colSpan,
-        t.rowSpan,
-        t.id,
-      );
-      _showGhost(pos.col, pos.row, t.colSpan, t.rowSpan, bad);
-      e.originalEvent.dataTransfer.dropEffect = bad ? "none" : "move";
+
+      var clientX = e.originalEvent.clientX;
+      var clientY = e.originalEvent.clientY;
+
+      if (ctx._rafId) return;
+      ctx._rafId = requestAnimationFrame(function () {
+        _TL.use(cid);
+        var ctx2 = _c();
+        ctx2._rafId = null;
+        if (!ctx2.dragId) return;
+        var t = GridCore.tableById(ctx2.dragId);
+        if (!t) return;
+        var pos = GridCore.cursorToGrid(clientX, clientY);
+        if (ctx2._lastCol === pos.col && ctx2._lastRow === pos.row) return;
+        ctx2._lastCol = pos.col;
+        ctx2._lastRow = pos.row;
+        GridRender.maybeExpand(pos.col + t.colSpan - 1, pos.row + t.rowSpan - 1);
+        _autoScroll(clientX, clientY);
+        var bad = GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id);
+        _showGhost(pos.col, pos.row, t.colSpan, t.rowSpan, bad);
+      });
     });
 
     jQuery(document).on("dragleave.tl-drag-" + cid, canvasSel, function (e) {
@@ -3038,6 +3069,8 @@ var GridDrag = (function () {
     var ctx = _c();
     if (ctx) {
       clearTimeout(ctx.touchTimer);
+      if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); ctx._rafId = null; }
+      if (ctx._touchRafId) { cancelAnimationFrame(ctx._touchRafId); ctx._touchRafId = null; }
       if (ctx.dragTouchMoveHandler) {
         document.removeEventListener("touchmove", ctx.dragTouchMoveHandler);
         ctx.dragTouchMoveHandler = null;
@@ -3047,10 +3080,19 @@ var GridDrag = (function () {
   }
 
   function _showGhost(col, row, colSpan, rowSpan, invalid) {
-    _removeGhost();
     var ctx = _c();
-    ctx.$ghost = GridRender.buildDragGhost(col, row, colSpan, rowSpan, invalid);
-    _TL.$(".tl-layout-grid").append(ctx.$ghost);
+    if (ctx.$ghost) {
+      // Update in-place — avoids DOM remove+create+append on every mousemove
+      ctx.$ghost.css({
+        "grid-column": col + " / span " + colSpan,
+        "grid-row": row + " / span " + rowSpan,
+      });
+      if (invalid) ctx.$ghost.addClass("tl-drop-ghost--invalid");
+      else ctx.$ghost.removeClass("tl-drop-ghost--invalid");
+    } else {
+      ctx.$ghost = GridRender.buildDragGhost(col, row, colSpan, rowSpan, invalid);
+      _TL.$(".tl-layout-grid").append(ctx.$ghost);
+    }
   }
 
   function _removeGhost() {
@@ -3095,15 +3137,21 @@ var GridResize = (function () {
       dir: null,
       origTable: null,
       $ghost: null,
-      touchMoveHandler: null
+      touchMoveHandler: null,
+      _rafId: null,
+      _pendingColSpan: null,
+      _pendingRowSpan: null,
     };
   }
 
   function destroy() {
     var cid = _TL.cid();
     var ctx = _inst[cid];
-    if (ctx && ctx.touchMoveHandler) {
-      document.removeEventListener("touchmove", ctx.touchMoveHandler);
+    if (ctx) {
+      if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); }
+      if (ctx.touchMoveHandler) {
+        document.removeEventListener("touchmove", ctx.touchMoveHandler);
+      }
     }
     jQuery(document).off(".tl-resize-" + cid);
     delete _inst[cid];
@@ -3178,33 +3226,43 @@ var GridResize = (function () {
   function _onMove(clientX, clientY) {
     var ctx = _c();
     if (!ctx.resizing || !ctx.tableId) return;
-    var cfg = GridCore.getConfig();
-    var t = GridCore.tableById(ctx.tableId);
-    if (!t) return;
+    if (ctx._rafId) return;
+    var cid = _TL.cid();
+    ctx._rafId = requestAnimationFrame(function () {
+      _TL.use(cid);
+      var ctx2 = _c();
+      ctx2._rafId = null;
+      if (!ctx2.resizing || !ctx2.tableId) return;
+      var cfg = GridCore.getConfig();
+      var t = GridCore.tableById(ctx2.tableId);
+      if (!t) return;
 
-    var pos = GridCore.cursorToGrid(clientX, clientY);
-    var newColSpan = ctx.origTable.colSpan;
-    var newRowSpan = ctx.origTable.rowSpan;
-    var shapeDef = (cfg.shapes || {})[t.shape] || {};
-    var minC = shapeDef.minCols || 1;
-    var minR = shapeDef.minRows || 1;
+      var pos = GridCore.cursorToGrid(clientX, clientY);
+      var newColSpan = ctx2.origTable.colSpan;
+      var newRowSpan = ctx2.origTable.rowSpan;
+      var shapeDef = (cfg.shapes || {})[t.shape] || {};
+      var minC = shapeDef.minCols || 1;
+      var minR = shapeDef.minRows || 1;
 
-    if (ctx.dir === "e" || ctx.dir === "se") {
-      newColSpan = Math.max(minC, pos.col - ctx.origTable.col + 1);
-    }
-    if (ctx.dir === "s" || ctx.dir === "se") {
-      newRowSpan = Math.max(minR, pos.row - ctx.origTable.row + 1);
-    }
+      if (ctx2.dir === "e" || ctx2.dir === "se") {
+        newColSpan = Math.max(minC, pos.col - ctx2.origTable.col + 1);
+      }
+      if (ctx2.dir === "s" || ctx2.dir === "se") {
+        newRowSpan = Math.max(minR, pos.row - ctx2.origTable.row + 1);
+      }
 
-    if (shapeDef.preferSquare) {
-      var side = Math.max(newColSpan, newRowSpan);
-      newColSpan = side;
-      newRowSpan = side;
-    }
+      if (shapeDef.preferSquare) {
+        var side = Math.max(newColSpan, newRowSpan);
+        newColSpan = side;
+        newRowSpan = side;
+      }
 
-    GridRender.maybeExpand(ctx.origTable.col + newColSpan - 1, ctx.origTable.row + newRowSpan - 1);
-    var bad = GridCore.hasCollision(ctx.origTable.col, ctx.origTable.row, newColSpan, newRowSpan, ctx.tableId);
-    _showGhost(ctx.origTable.col, ctx.origTable.row, newColSpan, newRowSpan, bad);
+      ctx2._pendingColSpan = newColSpan;
+      ctx2._pendingRowSpan = newRowSpan;
+      GridRender.maybeExpand(ctx2.origTable.col + newColSpan - 1, ctx2.origTable.row + newRowSpan - 1);
+      var bad = GridCore.hasCollision(ctx2.origTable.col, ctx2.origTable.row, newColSpan, newRowSpan, ctx2.tableId);
+      _showGhost(ctx2.origTable.col, ctx2.origTable.row, newColSpan, newRowSpan, bad);
+    });
   }
 
   function _onMouseUp() {
@@ -3227,19 +3285,11 @@ var GridResize = (function () {
   function _endResize() {
     var ctx = _c();
     if (!ctx.resizing || !ctx.tableId) { ctx.resizing = false; return; }
+    if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); ctx._rafId = null; }
     var cfg = GridCore.getConfig();
 
-    // Read ghost span values
-    var newColSpan = ctx.origTable.colSpan;
-    var newRowSpan = ctx.origTable.rowSpan;
-    if (ctx.$ghost) {
-      var gs = ctx.$ghost.css("grid-column");
-      var gr = ctx.$ghost.css("grid-row");
-      var cm = gs && gs.match(/span\s+(\d+)/);
-      var rm = gr && gr.match(/span\s+(\d+)/);
-      if (cm) newColSpan = parseInt(cm[1], 10);
-      if (rm) newRowSpan = parseInt(rm[1], 10);
-    }
+    var newColSpan = ctx._pendingColSpan !== null ? ctx._pendingColSpan : ctx.origTable.colSpan;
+    var newRowSpan = ctx._pendingRowSpan !== null ? ctx._pendingRowSpan : ctx.origTable.rowSpan;
 
     _removeGhost();
     _TL.$(".tl-resizing").removeClass("tl-resizing");
@@ -3257,13 +3307,23 @@ var GridResize = (function () {
     ctx.tableId = null;
     ctx.dir = null;
     ctx.origTable = null;
+    ctx._pendingColSpan = null;
+    ctx._pendingRowSpan = null;
   }
 
   function _showGhost(col, row, colSpan, rowSpan, invalid) {
-    _removeGhost();
     var ctx = _c();
-    ctx.$ghost = GridRender.buildPlaceGhost(col, row, colSpan, rowSpan, invalid);
-    _TL.$(".tl-layout-grid").append(ctx.$ghost);
+    if (ctx.$ghost) {
+      ctx.$ghost.css({
+        "grid-column": col + " / span " + colSpan,
+        "grid-row": row + " / span " + rowSpan,
+        "border-color": invalid ? "#dc2626" : "#f59e0b",
+        background: invalid ? "rgba(220,38,38,0.08)" : "rgba(245,158,11,0.1)",
+      }).text(colSpan + " \xd7 " + rowSpan);
+    } else {
+      ctx.$ghost = GridRender.buildPlaceGhost(col, row, colSpan, rowSpan, invalid);
+      _TL.$(".tl-layout-grid").append(ctx.$ghost);
+    }
   }
 
   function _removeGhost() {
@@ -3275,6 +3335,7 @@ var GridResize = (function () {
     var cid = _TL.cid();
     var ctx = _c();
     if (ctx) {
+      if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); ctx._rafId = null; }
       if (ctx.touchMoveHandler) {
         document.removeEventListener("touchmove", ctx.touchMoveHandler);
         ctx.touchMoveHandler = null;
@@ -4120,17 +4181,27 @@ var GridEdit = (function () {
     };
     var combobox = _buildTableCombobox(cid, 'Select a table', initialItem);
 
+    function _normalizeTableItem(t) {
+      return {
+        TableId:   t.TableId   !== undefined ? t.TableId   : t.tableId,
+        TableName: t.TableName !== undefined ? t.TableName : t.tableName,
+        Capacity:  t.Capacity  !== undefined ? t.Capacity  : t.capacity,
+        Status:    t.Status    !== undefined ? t.Status     : t.status,
+      };
+    }
+
     function _buildItems(tables) {
       var allLayers = GridCore.getAllLayersLayout();
       var result = [];
       tables.forEach(function (t, i) {
-        if (t.TableId === table.id) return;
+        var n = _normalizeTableItem(t);
+        if (n.TableId === table.id) return;
         if (allLayers && allLayers.some(function (layer) {
           return layer.rooms.some(function (room) {
-            return room.tables.some(function (tbl) { return tbl.id === t.TableId; });
+            return room.tables.some(function (tbl) { return tbl.id === n.TableId; });
           });
         })) return;
-        result.push({ value: i, label: t.TableName + ' (' + t.Capacity + ' seats)' });
+        result.push({ value: i, label: n.TableName + ' (' + n.Capacity + ' seats)' });
       });
       return result;
     }
@@ -4218,7 +4289,7 @@ var GridEdit = (function () {
         var props = { shape: currentShape };
 
         if (selected && selected.value !== '__current__') {
-          var selTable = defaultTables[parseInt(selected.value, 10)];
+          var selTable = _normalizeTableItem(defaultTables[parseInt(selected.value, 10)]);
           if (selTable) {
             props.id     = selTable.TableId;
             props.name   = selTable.TableName;
@@ -4422,15 +4493,21 @@ var GridPlace = (function () {
       start: null,
       $ghost: null,
       pending: null,
-      placeTouchMoveHandler: null
+      placeTouchMoveHandler: null,
+      _rafId: null,
+      _lastEndCol: null,
+      _lastEndRow: null,
     };
   }
 
   function destroy() {
     var cid = _TL.cid();
     var ctx = _inst[cid];
-    if (ctx && ctx.placeTouchMoveHandler) {
-      document.removeEventListener("touchmove", ctx.placeTouchMoveHandler);
+    if (ctx) {
+      if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); }
+      if (ctx.placeTouchMoveHandler) {
+        document.removeEventListener("touchmove", ctx.placeTouchMoveHandler);
+      }
     }
     jQuery(document).off(".tl-place-" + cid);
     delete _inst[cid];
@@ -4457,12 +4534,26 @@ var GridPlace = (function () {
       _TL.use(cid);
       var ctx = _c();
       if (!GridToolbar.getActive() || !ctx.start) return;
-      var end = GridCore.cursorToGrid(e.originalEvent.clientX, e.originalEvent.clientY);
-      var span = GridCore.calcSpan(ctx.start, end, GridToolbar.getActive());
-      GridRender.maybeExpand(span.col + span.colSpan - 1, span.row + span.rowSpan - 1);
-      _autoScrollCanvas(e.originalEvent.clientX, e.originalEvent.clientY);
-      var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
-      _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
+
+      var clientX = e.originalEvent.clientX;
+      var clientY = e.originalEvent.clientY;
+
+      if (ctx._rafId) return;
+      ctx._rafId = requestAnimationFrame(function () {
+        _TL.use(cid);
+        var ctx2 = _c();
+        ctx2._rafId = null;
+        if (!GridToolbar.getActive() || !ctx2.start) return;
+        var end = GridCore.cursorToGrid(clientX, clientY);
+        if (ctx2._lastEndCol === end.col && ctx2._lastEndRow === end.row) return;
+        ctx2._lastEndCol = end.col;
+        ctx2._lastEndRow = end.row;
+        var span = GridCore.calcSpan(ctx2.start, end, GridToolbar.getActive());
+        GridRender.maybeExpand(span.col + span.colSpan - 1, span.row + span.rowSpan - 1);
+        _autoScrollCanvas(clientX, clientY);
+        var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
+        _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
+      });
     });
 
     jQuery(document).on("mouseup.tl-place-" + cid, gridSel, function (e) {
@@ -4514,10 +4605,22 @@ var GridPlace = (function () {
         if (te.touches.length !== 1) return;
         te.preventDefault();
         var tc = te.touches[0];
-        var end = GridCore.cursorToGrid(tc.clientX, tc.clientY);
-        var span = GridCore.calcSpan(ctx2.start, end, GridToolbar.getActive());
-        var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
-        _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
+        var clientX = tc.clientX;
+        var clientY = tc.clientY;
+        if (ctx2._rafId) return;
+        ctx2._rafId = requestAnimationFrame(function () {
+          _TL.use(cid);
+          var ctx3 = _c();
+          ctx3._rafId = null;
+          if (!ctx3.start) return;
+          var end = GridCore.cursorToGrid(clientX, clientY);
+          if (ctx3._lastEndCol === end.col && ctx3._lastEndRow === end.row) return;
+          ctx3._lastEndCol = end.col;
+          ctx3._lastEndRow = end.row;
+          var span = GridCore.calcSpan(ctx3.start, end, GridToolbar.getActive());
+          var bad = GridCore.hasCollision(span.col, span.row, span.colSpan, span.rowSpan, null);
+          _showGhost(span.col, span.row, span.colSpan, span.rowSpan, bad);
+        });
       };
       document.addEventListener("touchmove", ctx.placeTouchMoveHandler, { passive: false });
     });
@@ -4541,10 +4644,18 @@ var GridPlace = (function () {
   }
 
   function _showGhost(col, row, colSpan, rowSpan, invalid) {
-    _removeGhost();
     var ctx = _c();
-    ctx.$ghost = GridRender.buildPlaceGhost(col, row, colSpan, rowSpan, invalid);
-    _TL.$(".tl-layout-grid").append(ctx.$ghost);
+    if (ctx.$ghost) {
+      ctx.$ghost.css({
+        "grid-column": col + " / span " + colSpan,
+        "grid-row": row + " / span " + rowSpan,
+        "border-color": invalid ? "#dc2626" : "#f59e0b",
+        background: invalid ? "rgba(220,38,38,0.08)" : "rgba(245,158,11,0.1)",
+      }).text(colSpan + " \xd7 " + rowSpan);
+    } else {
+      ctx.$ghost = GridRender.buildPlaceGhost(col, row, colSpan, rowSpan, invalid);
+      _TL.$(".tl-layout-grid").append(ctx.$ghost);
+    }
   }
 
   function _removeGhost() {
@@ -4578,16 +4689,26 @@ var GridPlace = (function () {
     // ── Table combobox ─────────────────────────────
     var combobox = _buildTableCombobox(cid, 'Select a table...');
 
+    function _normalizeTableItem(t) {
+      return {
+        TableId:   t.TableId   !== undefined ? t.TableId   : t.tableId,
+        TableName: t.TableName !== undefined ? t.TableName : t.tableName,
+        Capacity:  t.Capacity  !== undefined ? t.Capacity  : t.capacity,
+        Status:    t.Status    !== undefined ? t.Status     : t.status,
+      };
+    }
+
     function _buildItems(tables) {
       var allLayers = GridCore.getAllLayersLayout();
       var result = [];
       tables.forEach(function (t, i) {
+        var n = _normalizeTableItem(t);
         if (allLayers && allLayers.some(function (layer) {
           return layer.rooms.some(function (room) {
-            return room.tables.some(function (tbl) { return tbl.id === t.TableId; });
+            return room.tables.some(function (tbl) { return tbl.id === n.TableId; });
           });
         })) return;
-        result.push({ value: i, label: t.TableName + ' (' + t.Capacity + ' seats)' });
+        result.push({ value: i, label: n.TableName + ' (' + n.Capacity + ' seats)' });
       });
       return result;
     }
@@ -4663,7 +4784,7 @@ var GridPlace = (function () {
           $err.text('Please select a table.').show();
           return;
         }
-        var t = defaultTables[selected.value];
+        var t = _normalizeTableItem(defaultTables[selected.value]);
         _commit({
           id:     t.TableId,
           name:   t.TableName,
@@ -4848,9 +4969,12 @@ var GridPlace = (function () {
   function unbind() {
     var cid = _TL.cid();
     var ctx = _inst[cid];
-    if (ctx && ctx.placeTouchMoveHandler) {
-      document.removeEventListener("touchmove", ctx.placeTouchMoveHandler);
-      ctx.placeTouchMoveHandler = null;
+    if (ctx) {
+      if (ctx._rafId) { cancelAnimationFrame(ctx._rafId); ctx._rafId = null; }
+      if (ctx.placeTouchMoveHandler) {
+        document.removeEventListener("touchmove", ctx.placeTouchMoveHandler);
+        ctx.placeTouchMoveHandler = null;
+      }
     }
     jQuery(document).off(".tl-place-" + cid);
   }

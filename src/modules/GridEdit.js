@@ -29,17 +29,27 @@ var GridEdit = (function () {
     };
     var combobox = _buildTableCombobox(cid, 'Select a table', initialItem);
 
+    function _normalizeTableItem(t) {
+      return {
+        TableId:   t.TableId   !== undefined ? t.TableId   : t.tableId,
+        TableName: t.TableName !== undefined ? t.TableName : t.tableName,
+        Capacity:  t.Capacity  !== undefined ? t.Capacity  : t.capacity,
+        Status:    t.Status    !== undefined ? t.Status     : t.status,
+      };
+    }
+
     function _buildItems(tables) {
       var allLayers = GridCore.getAllLayersLayout();
       var result = [];
       tables.forEach(function (t, i) {
-        if (t.TableId === table.id) return;
+        var n = _normalizeTableItem(t);
+        if (n.TableId === table.id) return;
         if (allLayers && allLayers.some(function (layer) {
           return layer.rooms.some(function (room) {
-            return room.tables.some(function (tbl) { return tbl.id === t.TableId; });
+            return room.tables.some(function (tbl) { return tbl.id === n.TableId; });
           });
         })) return;
-        result.push({ value: i, label: t.TableName + ' (' + t.Capacity + ' seats)' });
+        result.push({ value: i, label: n.TableName + ' (' + n.Capacity + ' seats)' });
       });
       return result;
     }
@@ -127,7 +137,7 @@ var GridEdit = (function () {
         var props = { shape: currentShape };
 
         if (selected && selected.value !== '__current__') {
-          var selTable = defaultTables[parseInt(selected.value, 10)];
+          var selTable = _normalizeTableItem(defaultTables[parseInt(selected.value, 10)]);
           if (selTable) {
             props.id     = selTable.TableId;
             props.name   = selTable.TableName;
