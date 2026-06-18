@@ -4,10 +4,12 @@ var GridZoom = (function () {
   function _c() { return _inst[_TL.cid()]; }
 
   function init(initial) {
-    _inst[_TL.cid()] = { zoom: initial || 1 };
+    _inst[_TL.cid()] = { zoom: initial || 1, _shrinkTimer: null };
   }
 
   function destroy() {
+    var ctx = _inst[_TL.cid()];
+    if (ctx && ctx._shrinkTimer) clearTimeout(ctx._shrinkTimer);
     delete _inst[_TL.cid()];
   }
 
@@ -78,7 +80,9 @@ var GridZoom = (function () {
     $za.css({ width: natW * level + "px", height: natH * level + "px" });
   }
 
-  // Expand grid so it always fills the visible canvas at the given zoom level
+  // Expand grid so it always fills the visible canvas at the given zoom level.
+  // When zooming back in, excess cells are pruned after a 300ms idle (debounced
+  // so rapid slider movement doesn't trigger a costly removal on every tick).
   function _expandToFill(zoom) {
     var cfg = GridCore.getConfig();
     if (!cfg.infiniteGrid) return;
@@ -91,10 +95,23 @@ var GridZoom = (function () {
     var neededCols = Math.ceil(canvasW / (zoom * unit)) + 1;
     var neededRows = Math.ceil(canvasH / (zoom * unit)) + 1;
     if (neededCols > cfg.columns || neededRows > cfg.rows) {
+      // Zooming out — grow immediately
+      if (_c()._shrinkTimer) { clearTimeout(_c()._shrinkTimer); _c()._shrinkTimer = null; }
       GridRender.expandGridDOM(
         Math.max(cfg.columns, neededCols),
         Math.max(cfg.rows, neededRows)
       );
+    } else {
+      // Zooming in — debounce the shrink so it fires once after sliding stops
+      var cid = _TL.cid();
+      var nc = neededCols;
+      var nr = neededRows;
+      if (_c()._shrinkTimer) clearTimeout(_c()._shrinkTimer);
+      _c()._shrinkTimer = setTimeout(function () {
+        _TL.use(cid);
+        _c()._shrinkTimer = null;
+        GridRender.maybeShrinkGridDOM(nc, nr);
+      }, 300);
     }
   }
 

@@ -33,6 +33,9 @@ var GridRender = (function () {
 
   function buildGrid() {
     var cfg = GridCore.getConfig();
+    // Snapshot initial dimensions as the shrink floor
+    if (cfg._initialColumns === undefined) cfg._initialColumns = cfg.columns;
+    if (cfg._initialRows === undefined) cfg._initialRows = cfg.rows;
     var gridW = cfg.columns * cfg.cellSize + (cfg.columns - 1) * cfg.gap;
     var gridH = cfg.rows * cfg.cellSize + (cfg.rows - 1) * cfg.gap;
 
@@ -275,6 +278,67 @@ var GridRender = (function () {
     }
   }
 
+  // ── Grid shrink (called when zooming back in) ────────
+
+  function _maxTableEndCol() {
+    var max = 0;
+    jQuery.each(GridCore.getTables(), function (_, t) {
+      max = Math.max(max, t.col + t.colSpan - 1);
+    });
+    return max;
+  }
+
+  function _maxTableEndRow() {
+    var max = 0;
+    jQuery.each(GridCore.getTables(), function (_, t) {
+      max = Math.max(max, t.row + t.rowSpan - 1);
+    });
+    return max;
+  }
+
+  // Only shrink when the grid is meaningfully larger than needed.
+  // BUFFER extra cells are kept to avoid immediate re-expansion.
+  function maybeShrinkGridDOM(neededCols, neededRows) {
+    var cfg = GridCore.getConfig();
+    if (!cfg.infiniteGrid) return;
+    var BUFFER = 5;
+    // Bail early if there's no meaningful excess
+    if (cfg.columns <= neededCols + BUFFER && cfg.rows <= neededRows + BUFFER) return;
+
+    var minCols = Math.max(neededCols + BUFFER, _maxTableEndCol(), cfg._initialColumns || 1);
+    var minRows = Math.max(neededRows + BUFFER, _maxTableEndRow(), cfg._initialRows || 1);
+    if (minCols >= cfg.columns && minRows >= cfg.rows) return;
+
+    shrinkGridDOM(minCols, minRows);
+  }
+
+  function shrinkGridDOM(newCols, newRows) {
+    var cfg = GridCore.getConfig();
+    newCols = Math.min(newCols, cfg.columns);
+    newRows = Math.min(newRows, cfg.rows);
+    if (newCols === cfg.columns && newRows === cfg.rows) return;
+
+    // Remove excess background cells in one pass using native getAttribute (fast)
+    _TL.$("." + ns("cell--empty")).filter(function () {
+      return (
+        parseInt(this.getAttribute("data-col")) > newCols ||
+        parseInt(this.getAttribute("data-row")) > newRows
+      );
+    }).remove();
+
+    var gridW = newCols * cfg.cellSize + (newCols - 1) * cfg.gap;
+    var gridH = newRows * cfg.cellSize + (newRows - 1) * cfg.gap;
+    _TL.$(".tl-layout-grid").css({
+      "grid-template-columns": "repeat(" + newCols + ", " + cfg.cellSize + "px)",
+      "grid-template-rows":    "repeat(" + newRows + ", " + cfg.cellSize + "px)",
+      width:  gridW + "px",
+      height: gridH + "px",
+    });
+    cfg.columns = newCols;
+    cfg.rows    = newRows;
+    GridZoom.syncZoomArea();
+  }
+
   // ── Trash zone ─────────────────────────────────────
 
   function buildTrashZone() {
@@ -297,6 +361,8 @@ var GridRender = (function () {
     buildTrashZone: buildTrashZone,
     expandGridDOM: expandGridDOM,
     maybeExpand: maybeExpand,
+    maybeShrinkGridDOM: maybeShrinkGridDOM,
+    shrinkGridDOM: shrinkGridDOM,
     ns: ns,
   };
 })();
