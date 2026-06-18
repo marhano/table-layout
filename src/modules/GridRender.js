@@ -101,15 +101,24 @@ var GridRender = (function () {
         "clip-path": styles.clipPath,
       });
 
+    // Extract display number/name — strips "Table " prefix if present
+    var nameMatch = t.name.match(/^table\s+(.+)$/i);
+    var nameDisplay = nameMatch ? nameMatch[1] : t.name;
+
     $card.append(
-      jQuery("<span>").addClass(ns("table-name")).text(t.name),
-      jQuery("<span>")
-        .addClass(ns("table-seats"))
-        .text("Seats: " + t.seats),
-      jQuery("<span>")
-        .addClass(ns("table-status"))
-        .text(t.status)
-        .css("background", GridCore.hexAlpha(statusColor, 0.3)),
+      jQuery("<div>").addClass(ns("table-content")).append(
+        jQuery("<div>").addClass(ns("table-header")).append(
+          jQuery("<span>").addClass(ns("table-label")).text("TABLE"),
+          jQuery("<span>").addClass(ns("table-status")).text(t.status)
+        ),
+        jQuery("<div>").addClass(ns("table-main")).append(
+          jQuery("<span>").addClass(ns("table-num")).text(nameDisplay)
+        ),
+        jQuery("<div>").addClass(ns("table-footer")).append(
+          jQuery("<span>").addClass(ns("table-seats"))
+            .html('<i class="fa-solid fa-chair"></i> ' + t.seats)
+        )
+      )
     );
 
     if (cfg.showSizeBadge) {

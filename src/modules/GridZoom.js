@@ -52,6 +52,7 @@ var GridZoom = (function () {
 
     var $za = _TL.$(".tl-zoom-area");
     $za.css("transform", "scale(" + level + ")");
+    $za.css("--tl-zoom", level);
 
     // Expand grid cells to fill canvas at this zoom level
     _expandToFill(level);
