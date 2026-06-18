@@ -16,9 +16,13 @@ var GridDrag = (function () {
       _rafId: null,
       _lastCol: null,
       _lastRow: null,
+      dragOffsetCol: 0,
+      dragOffsetRow: 0,
       _touchRafId: null,
       _lastTouchCol: null,
       _lastTouchRow: null,
+      touchDragOffsetCol: 0,
+      touchDragOffsetRow: 0,
     };
   }
 
@@ -57,6 +61,15 @@ var GridDrag = (function () {
         ctx.dragId = jQuery(this).data("table-id");
         ctx._lastCol = null;
         ctx._lastRow = null;
+        var tGrab = GridCore.tableById(ctx.dragId);
+        if (tGrab) {
+          var grabPos = GridCore.cursorToGrid(e.originalEvent.clientX, e.originalEvent.clientY);
+          ctx.dragOffsetCol = grabPos.col - tGrab.col;
+          ctx.dragOffsetRow = grabPos.row - tGrab.row;
+        } else {
+          ctx.dragOffsetCol = 0;
+          ctx.dragOffsetRow = 0;
+        }
         e.originalEvent.dataTransfer.effectAllowed = "move";
         e.originalEvent.dataTransfer.setData("text/plain", String(ctx.dragId));
 
@@ -99,6 +112,15 @@ var GridDrag = (function () {
       ctx.touchReady = false;
       ctx._lastTouchCol = null;
       ctx._lastTouchRow = null;
+      var tTouchGrab = GridCore.tableById(ctx.touchDragId);
+      if (tTouchGrab) {
+        var grabPosT = GridCore.cursorToGrid(touch.clientX, touch.clientY);
+        ctx.touchDragOffsetCol = grabPosT.col - tTouchGrab.col;
+        ctx.touchDragOffsetRow = grabPosT.row - tTouchGrab.row;
+      } else {
+        ctx.touchDragOffsetCol = 0;
+        ctx.touchDragOffsetRow = 0;
+      }
 
       clearTimeout(ctx.touchTimer);
       ctx.touchTimer = setTimeout(function () {
@@ -148,8 +170,10 @@ var GridDrag = (function () {
           if (ctx3._lastTouchCol === pos.col && ctx3._lastTouchRow === pos.row) return;
           ctx3._lastTouchCol = pos.col;
           ctx3._lastTouchRow = pos.row;
-          var bad = GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id);
-          _showGhost(pos.col, pos.row, t.colSpan, t.rowSpan, bad);
+          var ghostColT = Math.max(1, pos.col - ctx3.touchDragOffsetCol);
+          var ghostRowT = Math.max(1, pos.row - ctx3.touchDragOffsetRow);
+          var bad = GridCore.hasCollision(ghostColT, ghostRowT, t.colSpan, t.rowSpan, t.id);
+          _showGhost(ghostColT, ghostRowT, t.colSpan, t.rowSpan, bad);
           var cfg2 = GridCore.getConfig();
           if (cfg2.trashZone) {
             var trashEl = jQuery(trashSel)[0];
@@ -207,10 +231,12 @@ var GridDrag = (function () {
       }
 
       var pos = GridCore.cursorToGrid(touch.clientX, touch.clientY);
-      if (GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id)) return;
+      var dropColT = Math.max(1, pos.col - ctx.touchDragOffsetCol);
+      var dropRowT = Math.max(1, pos.row - ctx.touchDragOffsetRow);
+      if (GridCore.hasCollision(dropColT, dropRowT, t.colSpan, t.rowSpan, t.id)) return;
 
       var from = { col: t.col, row: t.row };
-      GridCore.moveTable(t.id, pos.col, pos.row);
+      GridCore.moveTable(t.id, dropColT, dropRowT);
       _TL.$('[data-table-id="' + t.id + '"]').replaceWith(GridRender.buildTableCard(t));
 
       if (cfg.swapAnimation) {
@@ -221,9 +247,9 @@ var GridDrag = (function () {
         }, 280);
       }
 
-      GridEvents.emit("table:moved", { from: from, to: { col: pos.col, row: pos.row } });
+      GridEvents.emit("table:moved", { from: from, to: { col: dropColT, row: dropRowT } });
       if (typeof cfg.onSwap === "function")
-        cfg.onSwap(from, { col: pos.col, row: pos.row }, GridCore.getLayout());
+        cfg.onSwap(from, { col: dropColT, row: dropRowT }, GridCore.getLayout());
       if (typeof cfg.onLayoutChange === "function" && !(cfg.editMode !== false && GridCore.isEditing()))
         cfg.onLayoutChange(GridCore.getLayout());
     });
@@ -278,10 +304,12 @@ var GridDrag = (function () {
         if (ctx2._lastCol === pos.col && ctx2._lastRow === pos.row) return;
         ctx2._lastCol = pos.col;
         ctx2._lastRow = pos.row;
-        GridRender.maybeExpand(pos.col + t.colSpan - 1, pos.row + t.rowSpan - 1);
+        var ghostCol = Math.max(1, pos.col - ctx2.dragOffsetCol);
+        var ghostRow = Math.max(1, pos.row - ctx2.dragOffsetRow);
+        GridRender.maybeExpand(ghostCol + t.colSpan - 1, ghostRow + t.rowSpan - 1);
         _autoScroll(clientX, clientY);
-        var bad = GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id);
-        _showGhost(pos.col, pos.row, t.colSpan, t.rowSpan, bad);
+        var bad = GridCore.hasCollision(ghostCol, ghostRow, t.colSpan, t.rowSpan, t.id);
+        _showGhost(ghostCol, ghostRow, t.colSpan, t.rowSpan, bad);
       });
     });
 
@@ -308,13 +336,16 @@ var GridDrag = (function () {
         e.originalEvent.clientX,
         e.originalEvent.clientY,
       );
-      if (GridCore.hasCollision(pos.col, pos.row, t.colSpan, t.rowSpan, t.id)) {
+      var dropCol = Math.max(1, pos.col - ctx.dragOffsetCol);
+      var dropRow = Math.max(1, pos.row - ctx.dragOffsetRow);
+      if (GridCore.hasCollision(dropCol, dropRow, t.colSpan, t.rowSpan, t.id)) {
+        _TL.$('[data-table-id="' + t.id + '"]').css("opacity", "");
         ctx.dragId = null;
         return;
       }
 
       var from = { col: t.col, row: t.row };
-      GridCore.moveTable(t.id, pos.col, pos.row);
+      GridCore.moveTable(t.id, dropCol, dropRow);
 
       _TL.$('[data-table-id="' + t.id + '"]').replaceWith(
         GridRender.buildTableCard(t),
@@ -330,11 +361,11 @@ var GridDrag = (function () {
 
       GridEvents.emit("table:moved", {
         from: from,
-        to: { col: pos.col, row: pos.row },
+        to: { col: dropCol, row: dropRow },
       });
 
       if (typeof cfg.onSwap === "function")
-        cfg.onSwap(from, { col: pos.col, row: pos.row }, GridCore.getLayout());
+        cfg.onSwap(from, { col: dropCol, row: dropRow }, GridCore.getLayout());
       if (typeof cfg.onLayoutChange === "function" && !(cfg.realTime === false && GridCore.isEditing()))
         cfg.onLayoutChange(GridCore.getLayout());
 
