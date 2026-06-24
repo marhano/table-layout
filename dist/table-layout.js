@@ -1,7 +1,7 @@
 /*!
  * table-layout.js v0.0.1
  * Restaurant Table Layout Grid Library
- * Built: 2026-06-18T02:21:34.251Z
+ * Built: 2026-06-23T06:30:25.720Z
  * Requires: jQuery 3+
  * License: MIT
  */
@@ -1485,7 +1485,8 @@ var GridLayers = (function () {
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
 
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
 
     setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
@@ -1580,7 +1581,8 @@ var GridLayers = (function () {
     $modal.append($actions);
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
 
   function _buildIconBadge(layer) {
@@ -1907,7 +1909,8 @@ var GridToolbar = (function () {
     $modal.append($actions);
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
 
   function _selectIcon(room, value) {
@@ -2204,7 +2207,8 @@ var GridToolbar = (function () {
     }
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
     setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
 
@@ -2341,7 +2345,8 @@ var GridToolbar = (function () {
     }
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
     setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
 
@@ -5641,7 +5646,8 @@ var GridRooms = (function () {
     $overlay.append($modal);
     jQuery("#" + _TL.cid()).append($overlay);
 
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
 
     setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
@@ -5961,7 +5967,8 @@ var GridRooms = (function () {
     $modal.append($actions);
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
 
   return {

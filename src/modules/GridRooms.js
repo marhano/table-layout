@@ -531,7 +531,8 @@ var GridRooms = (function () {
     $overlay.append($modal);
     jQuery("#" + _TL.cid()).append($overlay);
 
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
 
     setTimeout(function () { $nameInput.trigger("focus"); }, 50);
   }
@@ -851,7 +852,8 @@ var GridRooms = (function () {
     $modal.append($actions);
     $overlay.append($modal);
     jQuery("#" + cid).append($overlay);
-    $overlay.on("click", function (e) { if (jQuery(e.target).is($overlay)) $overlay.remove(); });
+    $overlay.on("mousedown", function (e) { $overlay.data("tl-md", jQuery(e.target).is($overlay)); })
+             .on("click",    function (e) { if ($overlay.data("tl-md") && jQuery(e.target).is($overlay)) $overlay.remove(); });
   }
 
   return {
